@@ -65,26 +65,40 @@ export default function PastPrescriptions() {
       const response = await axios.post('http://localhost:5050/doctor/prescription/completedPrescription', { token });
 
       if (response.status === 200) {
-        console.log('API Response:', response.data);
+        console.log('Full API Response:', response);
+        console.log('Response data:', response.data);
+        console.log('Response data type:', typeof response.data);
+        console.log('Is array?', Array.isArray(response.data));
         
-        // Check if response contains a message indicating no prescriptions
-        if (response.data && response.data.message && response.data.message.includes('No prescriptions found')) {
-          setPrescriptions([]);
-          setError(null);
+        let prescriptionsData = [];
+        
+        // Try different possible response structures
+        if (response.data && Array.isArray(response.data)) {
+          // Direct array response
+          prescriptionsData = response.data;
+        } else if (response.data && response.data.prescriptions && Array.isArray(response.data.prescriptions)) {
+          // Response with prescriptions array
+          prescriptionsData = response.data.prescriptions;
+        } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          // Response with data array
+          prescriptionsData = response.data.data;
+        } else if (response.data && response.data.result && Array.isArray(response.data.result)) {
+          // Response with result array
+          prescriptionsData = response.data.result;
+        } else {
+          console.log('No valid prescriptions array found in response');
+          console.log('Available keys:', response.data ? Object.keys(response.data) : 'No data');
         }
-        // Handle the new response structure with message and prescriptions array
-        else if (response.data && response.data.message === 'Prescriptions fetched successfully' && Array.isArray(response.data.prescriptions)) {
-          setPrescriptions(response.data.prescriptions);
-          setError(null);
-        }
-        // Fallback: Check if response.data is directly an array
-        else if (Array.isArray(response.data)) {
-          setPrescriptions(response.data);
+        
+        console.log('Extracted prescriptions:', prescriptionsData);
+        console.log('Number of prescriptions:', prescriptionsData.length);
+        
+        if (prescriptionsData.length > 0) {
+          setPrescriptions(prescriptionsData);
           setError(null);
         } else {
-          console.log('No prescriptions data found, setting empty array');
           setPrescriptions([]);
-          setError(null);
+          setError('No completed prescriptions found');
         }
       } else {
         throw new Error('Failed to fetch prescriptions');
@@ -150,7 +164,7 @@ export default function PastPrescriptions() {
       </div>
       <p className="text-gray-600 mb-6">View and manage completed prescription history</p>
 
-
+      
 
       {/* Table */}
       <div className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">

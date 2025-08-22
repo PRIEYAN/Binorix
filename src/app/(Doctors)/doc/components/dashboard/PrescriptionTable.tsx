@@ -5,6 +5,7 @@ import { useAccount, useSignMessage } from "wagmi";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import axios from "axios";
+import { uploadPrescriptionPDF, GreenfieldCredentials } from "@/lib/greenfieldStorage.simple";
 
 const medicinesList = [
   "Paracetamol",
@@ -350,6 +351,18 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
     
     const currentDoctorDetails = doctorDetails;
     console.log('Using doctor details for PDF:', currentDoctorDetails);
+
+    // Get Greenfield credentials - using your provided credentials
+    const greenfieldCredentials: GreenfieldCredentials = {
+      privateKey: '7b5bb4fc46f61fb15fbb9a077e57a8f4820ab827c42ec387068c2b7acef3ccfb',
+      address: '0x2635F0349bad76C98eBF7A7feB9515802D80F7ED',
+      bucketName: 'prescriptions-details'
+    };
+
+    // Check if credentials are available
+    if (!greenfieldCredentials.privateKey || !greenfieldCredentials.address) {
+      console.warn('⚠️ Greenfield credentials not found. PDF will be downloaded locally only.');
+    }
     
         try {
       // First, save the prescription to the database
@@ -364,7 +377,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       
       // Then generate the PDF
       console.log('📄 Starting PDF generation...');
-      const pdf = new jsPDF("p", "mm", "a4");
+    const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
@@ -568,7 +581,35 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
       // Generate filename with patient info and timestamp
       const fileName = `Prescription_${patient?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}_${Date.now().toString().slice(-6)}.pdf`;
+      
+      // Save PDF locally
       pdf.save(fileName);
+
+      // Upload to BNB Greenfield if credentials are available
+      let greenfieldResult = null;
+      if (greenfieldCredentials.privateKey && greenfieldCredentials.address) {
+        try {
+          console.log('🌐 Uploading PDF to BNB Greenfield...');
+          const prescriptionId = `RX${Date.now().toString().slice(-6)}`;
+          
+          greenfieldResult = await uploadPrescriptionPDF(
+            pdf,
+            patient?.name || 'Unknown Patient',
+            prescriptionId,
+            greenfieldCredentials
+          );
+
+          if (greenfieldResult.success) {
+            console.log('✅ PDF uploaded to Greenfield successfully!');
+            console.log('Greenfield URL:', greenfieldResult.url);
+            console.log('Transaction Hash:', greenfieldResult.txHash);
+          } else {
+            console.error('❌ Greenfield upload failed:', greenfieldResult.error);
+          }
+        } catch (greenfieldError) {
+          console.error('❌ Error uploading to Greenfield:', greenfieldError);
+        }
+      }
 
       // Clear the form and reset everything
       setRows([{ phone: "", prescriptions: [], searchTerm: "", advice: "" }]);
@@ -578,7 +619,16 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       // Call the parent callback to reset patient data
       onPrescriptionComplete();
 
-      alert("✅ Prescription saved to database and multi-page PDF generated successfully! The form has been cleared. Please sign in again for the next prescription.");
+      // Show success message with Greenfield status
+      let successMessage = "✅ Prescription saved to database and multi-page PDF generated successfully!";
+      if (greenfieldResult?.success) {
+        successMessage += "\n🌐 PDF also uploaded to BNB Greenfield blockchain storage!";
+      } else if (greenfieldCredentials.privateKey && greenfieldCredentials.address) {
+        successMessage += "\n⚠️ Local PDF generated, but Greenfield upload failed.";
+      }
+      successMessage += "\nThe form has been cleared. Please sign in again for the next prescription.";
+      
+      alert(successMessage);
 
     } catch (error: any) {
       console.error("=== PDF GENERATION ERROR ===");
@@ -743,8 +793,8 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                         >
                           {signedAddress ? '✅ Signed' : '✍️ Sign Prescription'}
                       </button>
-                                              <button
-                          onClick={generatePDF}
+                      <button
+                        onClick={generatePDF}
                           disabled={!signedAddress || !signedTimestamp}
                           className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 ${
                             !signedAddress || !signedTimestamp
@@ -753,7 +803,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                           }`}
                         >
                           📄 Generate PDF
-                        </button>
+                      </button>
                       </div>
                     </td>
                   </tr>
