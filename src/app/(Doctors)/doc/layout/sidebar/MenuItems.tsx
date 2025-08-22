@@ -36,7 +36,7 @@ const Menuitems = [
     id: uniqueId(),
     title: "Live Prescriptions",
     icon: IconCopy,
-    href: "/utilities/shadow",
+    href: "/doc/components/liveprescription",
   },
   {
     navlabel: true,
@@ -46,7 +46,7 @@ const Menuitems = [
     id: uniqueId(),
     title: "Manage Prescriptions",
     icon: IconLogin,
-    href: "/utilities/prescription",
+    href: "/doc/components/manageprescription",
   },
   {
     id: uniqueId(),

@@ -121,8 +121,6 @@ export default function SearchPatient({ onPatientFound, onPatientNotFound }: Sea
           )}
         </motion.button>
       </div>
-
-      {error && <p className="text-sm text-red-500">{error}</p>}
       {successMsg && <p className="text-sm text-green-600">{successMsg}</p>}
     </div>
   );

@@ -30,7 +30,6 @@ const MSidebar = ({
     },
   };
 
-
   if (lgUp) {
     return (
       <Box

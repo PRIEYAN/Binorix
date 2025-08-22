@@ -4,9 +4,9 @@ import { User, Mail, Phone, Venus, Stethoscope } from "lucide-react";
 interface Patient {
   name: string;
   email: string;
-  mobile: string;
+  PhoneNumber: string;
   gender: string;
-  issues: string;
+  otherDetails: string;
 }
 
 interface PatientDetailsProps {
@@ -41,7 +41,7 @@ export default function PatientDetails({ status, patient }: PatientDetailsProps)
             </div>
             <div className="flex flex-row gap-4 items-center">
                 <Phone className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patient.mobile}</span>
+                <span className="font-semibold text-gray-700">{patient.PhoneNumber}</span>
             </div>
             <div className="flex flex-row gap-4 items-center">
                 <Venus className="text-blue-600" size={28} />
@@ -49,7 +49,7 @@ export default function PatientDetails({ status, patient }: PatientDetailsProps)
             </div>
             <div className="flex flex-row gap-4 items-center justify-start">
                 <Stethoscope className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patient.issues}</span>
+                <span className="font-semibold text-gray-700">{patient.otherDetails}</span>
             </div>
         </div>
       </div>
