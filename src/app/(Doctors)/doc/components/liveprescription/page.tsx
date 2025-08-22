@@ -1,12 +1,28 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Activity, Clock, CheckCircle, AlertCircle, XCircle, Building2 } from "lucide-react";
+import axios from "axios";
 
 interface LivePrescription {
-  id: string;
-  patientName: string;
-  patientPhone: string;
+  _id: string;
+  doctorWallet: string;
+  patientWallet: string;
+  doctor: {
+    name: string;
+    nmrNumber: string;
+    specialization: string;
+    email: string;
+    hospitalName: string;
+    hospital: string;
+  };
+  patient: {
+    name: string;
+    PhoneNumber: string;
+    email: string;
+    gender: string;
+  };
   medicines: {
+    _id: string;
     name: string;
     quantity: string;
     timing: {
@@ -14,119 +30,17 @@ interface LivePrescription {
       afternoon: boolean;
       night: boolean;
     };
-    intake: 0 | 1;
+    foodIntake: "Before Food" | "After Food";
+    instructions: string;
   }[];
   advice: string;
   status: "pending" | "processing" | "ready" | "completed" | "cancelled";
-  prescribedAt: string;
-  updatedAt: string;
+  prescrptionID: string;
+  CreatedDate: string;
+  updatedDate: string;
+  __v: number;
 }
 
-const samplePrescriptions: LivePrescription[] = [
-  {
-    id: "RX001",
-    patientName: "John Doe",
-    patientPhone: "+91 9876543210",
-    medicines: [
-      {
-        name: "Paracetamol",
-        quantity: "10",
-        timing: { morning: true, afternoon: false, night: true },
-        intake: 1
-      },
-      {
-        name: "Amoxicillin",
-        quantity: "7",
-        timing: { morning: true, afternoon: true, night: false },
-        intake: 0
-      }
-    ],
-    advice: "Take with plenty of water. Complete the full course.",
-    status: "processing",
-    prescribedAt: "2024-01-15 10:30:00",
-    updatedAt: "2024-01-15 11:15:00"
-  },
-  {
-    id: "RX002",
-    patientName: "Sarah Wilson",
-    patientPhone: "+91 9876543211",
-    medicines: [
-      {
-        name: "Ibuprofen",
-        quantity: "5",
-        timing: { morning: false, afternoon: true, night: true },
-        intake: 1
-      }
-    ],
-    advice: "Take after meals. Avoid alcohol.",
-    status: "processing",
-    prescribedAt: "2024-01-15 09:45:00",
-    updatedAt: "2024-01-15 12:00:00"
-  },
-  {
-    id: "RX003",
-    patientName: "Mike Johnson",
-    patientPhone: "+91 9876543212",
-    medicines: [
-      {
-        name: "Metformin",
-        quantity: "30",
-        timing: { morning: true, afternoon: false, night: true },
-        intake: 0
-      },
-      {
-        name: "Aspirin",
-        quantity: "15",
-        timing: { morning: true, afternoon: false, night: false },
-        intake: 1
-      }
-    ],
-    advice: "Monitor blood sugar levels daily.",
-    status: "processing",
-    prescribedAt: "2024-01-15 08:20:00",
-    updatedAt: "2024-01-15 14:30:00"
-  },
-  {
-    id: "RX004",
-    patientName: "Emma Brown",
-    patientPhone: "+91 9876543213",
-    medicines: [
-      {
-        name: "Cetirizine",
-        quantity: "10",
-        timing: { morning: false, afternoon: false, night: true },
-        intake: 1
-      }
-    ],
-    advice: "Take before bedtime for allergies.",
-    status: "processing",
-    prescribedAt: "2024-01-15 15:30:00",
-    updatedAt: "2024-01-15 16:45:00"
-  },
-  {
-    id: "RX005",
-    patientName: "David Lee",
-    patientPhone: "+91 9876543214",
-    medicines: [
-      {
-        name: "Azithromycin",
-        quantity: "5",
-        timing: { morning: true, afternoon: false, night: false },
-        intake: 0
-      },
-      {
-        name: "Ciprofloxacin",
-        quantity: "7",
-        timing: { morning: true, afternoon: false, night: true },
-        intake: 1
-      }
-    ],
-    advice: "Complete antibiotic course. Take probiotics.",
-    status: "processing",
-    prescribedAt: "2024-01-15 11:15:00",
-    updatedAt: "2024-01-15 13:20:00"
-  }
-];
 
 const getStatusIcon = (status: LivePrescription['status']) => {
   switch (status) {
@@ -164,28 +78,111 @@ const getStatusColor = (status: LivePrescription['status']) => {
 
 const formatTiming = (timing: LivePrescription['medicines'][0]['timing']) => {
   const times = [];
-  if (timing.morning) times.push('🌅 Morning');
-  if (timing.afternoon) times.push('☀️ Afternoon');
-  if (timing.night) times.push('🌙 Night');
+  if (timing.morning) times.push(' Morning');
+  if (timing.afternoon) times.push(' Afternoon');
+  if (timing.night) times.push(' Night');
   return times.join(', ') || 'Not specified';
 };
 
 export default function LivePrescriptions() {
-  const [prescriptions, setPrescriptions] = useState<LivePrescription[]>(samplePrescriptions);
+  const [prescriptions, setPrescriptions] = useState<LivePrescription[]>([]);
   const [isLive, setIsLive] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate live updates
+  const fetchPrescriptions = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await axios.post('http://localhost:5050/doctor/prescription/getPrescriptionDetails', { token });
+
+      if (response.status === 200) {
+        console.log('API Response:', response.data);
+        
+        // Check if response contains a message indicating no prescriptions
+        if (response.data && response.data.message && response.data.message.includes('No prescriptions found')) {
+          setPrescriptions([]);
+          setError(null);
+        }
+        // Handle the new response structure with message and prescriptions array
+        else if (response.data && response.data.message === 'Prescriptions fetched successfully' && Array.isArray(response.data.prescriptions)) {
+          setPrescriptions(response.data.prescriptions);
+          setError(null);
+        }
+        // Fallback: Check if response.data is directly an array
+        else if (Array.isArray(response.data)) {
+          setPrescriptions(response.data);
+          setError(null);
+        } else {
+          console.log('No prescriptions data found, setting empty array');
+          setPrescriptions([]);
+          setError(null);
+        }
+      } else {
+        throw new Error('Failed to fetch prescriptions');
+      }
+    } catch (error: any) {
+      console.error('Error fetching prescriptions:', error);
+      setError(error.response?.data?.message || error.message || 'Failed to fetch prescriptions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch prescriptions on component mount
+  useEffect(() => {
+    fetchPrescriptions();
+  }, []);
+
+  // Simulate live updates and refresh data
   useEffect(() => {
     const interval = setInterval(() => {
       setIsLive(prev => !prev);
+      // Refresh data every 30 seconds
+      if (Date.now() % 30000 < 1000) {
+        fetchPrescriptions();
+      }
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
+  if (loading) {
+    return (
+      <div className="mt-8">
+        <div className="flex items-center justify-center py-12">
+          <Activity className="w-8 h-8 text-blue-500 animate-spin mr-3" />
+          <span className="text-lg text-gray-600">Loading live prescriptions...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Prescriptions</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={fetchPrescriptions}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-8">
-      {/* Header with Live Animation */}
       <div className="mb-6 flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-red-500' : 'bg-red-400'} transition-all duration-300 ${isLive ? 'animate-pulse' : ''}`}></div>
@@ -195,6 +192,12 @@ export default function LivePrescriptions() {
           <Activity className={`w-4 h-4 ${isLive ? 'animate-spin' : ''}`} />
           <span>Real-time updates</span>
         </div>
+        <button
+          onClick={fetchPrescriptions}
+          className="ml-auto px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          🔄 Refresh
+        </button>
       </div>
       <p className="text-gray-600 mb-6">Monitor prescription status and pharmacy processing in real-time</p>
 
@@ -227,41 +230,40 @@ export default function LivePrescriptions() {
           </thead>
           <tbody>
             {prescriptions.map((prescription, index) => (
-              <React.Fragment key={prescription.id}>
+              <React.Fragment key={prescription._id}>
                 {prescription.medicines.map((medicine, medIndex) => (
                   <tr
-                    key={`${prescription.id}-${medIndex}`}
+                    key={`${prescription._id}-${medIndex}`}
                     className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   >
-                    {/* Prescription ID - only show on first medicine row */}
                     {medIndex === 0 ? (
                       <td className="py-4 px-6 align-top" rowSpan={prescription.medicines.length}>
                         <div className="flex flex-col">
-                          <span className="font-bold text-blue-600">{prescription.id}</span>
+                          <span className="font-bold text-blue-600">{prescription.prescrptionID}</span>
                           <span className="text-xs text-gray-500">
-                            {new Date(prescription.prescribedAt).toLocaleString()}
+                            {new Date(prescription.CreatedDate).toLocaleString()}
                           </span>
                         </div>
                       </td>
                     ) : null}
-
-                    {/* Patient Details - only show on first medicine row */}
                     {medIndex === 0 ? (
                       <td className="py-4 px-6 align-top" rowSpan={prescription.medicines.length}>
                         <div className="flex flex-col">
-                          <span className="font-medium text-gray-800">{prescription.patientName}</span>
-                          <span className="text-sm text-gray-600">{prescription.patientPhone}</span>
+                          <span className="font-medium text-gray-800">{prescription.patient.name}</span>
+                          <span className="text-sm text-gray-600">{prescription.patient.PhoneNumber}</span>
+                          <span className="text-xs text-gray-500">{prescription.patient.email}</span>
                         </div>
                       </td>
                     ) : null}
-
-                    {/* Medicine Details */}
                     <td className="py-4 px-6">
                       <div className="flex items-center">
                         <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
                         <div className="flex flex-col">
                           <span className="font-medium text-gray-800">{medicine.name}</span>
                           <span className="text-sm text-gray-600">Qty: {medicine.quantity}</span>
+                          {medicine.instructions && (
+                            <span className="text-xs text-gray-500 mt-1">{medicine.instructions}</span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -274,7 +276,7 @@ export default function LivePrescriptions() {
                     {/* Food Intake */}
                     <td className="py-4 px-6">
                       <span className="text-sm text-gray-700">
-                        {medicine.intake === 0 ? '🍽️ Before Food' : '🥘 After Food'}
+                        {medicine.foodIntake === 'Before Food' ? ' Before Food' : ' After Food'}
                       </span>
                     </td>
 
@@ -285,7 +287,6 @@ export default function LivePrescriptions() {
                       </td>
                     ) : null}
 
-
                     {/* Status - only show on first medicine row */}
                     {medIndex === 0 ? (
                       <td className="py-4 px-6 text-center align-top" rowSpan={prescription.medicines.length}>
@@ -295,7 +296,7 @@ export default function LivePrescriptions() {
                             {prescription.status.charAt(0).toUpperCase() + prescription.status.slice(1)}
                           </div>
                           <span className="text-xs text-gray-500">
-                            Updated: {new Date(prescription.updatedAt).toLocaleTimeString()}
+                            Updated: {new Date(prescription.updatedDate).toLocaleTimeString()}
                           </span>
                         </div>
                       </td>
@@ -335,7 +336,7 @@ export default function LivePrescriptions() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Active Patients</p>
-              <p className="text-2xl font-bold">{new Set(prescriptions.map(p => p.patientName)).size}</p>
+              <p className="text-2xl font-bold">{new Set(prescriptions.map(p => p.patient.name)).size}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>

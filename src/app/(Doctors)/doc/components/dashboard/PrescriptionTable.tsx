@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { Trash } from "lucide-react";
 import { useAccount, useSignMessage } from "wagmi";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { format } from "date-fns";
 import axios from "axios";
 
@@ -21,12 +20,13 @@ const medicinesList = [
 interface Prescription {
   name: string;
   quantity: string;
-  shift: {
+  timing: {
     morning: boolean;
     afternoon: boolean;
     night: boolean;
   };
-  intake: 0 | 1;
+  foodIntake: "Before Food" | "After Food";
+  instructions: string;
 }
 
 interface PrescriptionRow {
@@ -77,76 +77,22 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
   const fetchDoctorDetails = async () => {
     try {
-      // Check different possible token locations
-      const token = localStorage.getItem('token') || 
-                   localStorage.getItem('authToken') || 
-                   sessionStorage.getItem('token') || 
-                   sessionStorage.getItem('authToken');
-      
+      const token = localStorage.getItem('token');
       if (!token) {
-        console.error('No authentication token found in localStorage or sessionStorage');
-        console.log('Available localStorage keys:', Object.keys(localStorage));
-        console.log('Available sessionStorage keys:', Object.keys(sessionStorage));
+        console.error('No authentication token found');
         throw new Error('No authentication token found');
       }
 
-      console.log('Found token:', token.substring(0, 20) + '...');
-      
-      // Try different possible API endpoints
-      const possibleEndpoints = [
-        'http://localhost:5050/doctor/auth/getDoctorDetails',
-        'http://localhost:5050/api/doctor/auth/getDoctorDetails',
-        'http://localhost:5050/doctor/getDoctorDetails',
-        'http://localhost:5050/api/doctor/getDoctorDetails',
-        'http://localhost:5050/doctor/profile',
-        'http://localhost:5050/api/doctor/profile'
-      ];
-
-      let response = null;
-      let workingEndpoint = null;
-
-      for (const endpoint of possibleEndpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          response = await axios.get(endpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            timeout: 5000 // 5 second timeout per endpoint
-          });
-          
-          if (response.status === 200) {
-            workingEndpoint = endpoint;
-            console.log(`✅ Success with endpoint: ${endpoint}`);
-            break;
-          }
-        } catch (err: any) {
-          console.log(`❌ Failed with endpoint: ${endpoint} - Status: ${err.response?.status || 'Network Error'}`);
-          continue;
+      const response = await axios.post('http://localhost:5050/doctor/auth/getDoctorDetails', {
+        token: token
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
         }
-      }
+      });
 
-      if (!response || !workingEndpoint) {
-        throw new Error('All API endpoints failed. Please check your backend server and routes.');
-      }
-
-      console.log('Full API Response:', response);
-      console.log('Response status:', response.status);
-      console.log('Response data:', response.data);
-
-      // Handle different possible response structures
-      let doctor = null;
-      
-      if (response.data) {
-        // Try different possible response structures
-        doctor = response.data.doctor || 
-                response.data.data || 
-                response.data.user || 
-                (response.data.success ? response.data.doctor : null) ||
-                response.data;
-        
-        console.log('Extracted doctor data:', doctor);
+      if (response.status === 200 && response.data) {
+        const doctor = response.data.doctor || response.data.data || response.data;
         
         if (doctor && (doctor.name || doctor._id)) {
           const doctorInfo = {
@@ -157,44 +103,26 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
             email: doctor.email || 'doctor@binorix.com'
           };
           
-          console.log('Successfully processed doctor details:', doctorInfo);
           setDoctorDetails(doctorInfo);
           return doctor;
         } else {
-          console.error('No valid doctor data found in response');
           throw new Error('No valid doctor data in API response');
         }
       } else {
-        console.error('Empty response data');
-        throw new Error('Empty API response');
+        throw new Error('Invalid API response');
       }
     } catch (error: any) {
-      console.error('=== API ERROR DETAILS ===');
-      console.error('Error type:', error.constructor.name);
-      console.error('Error message:', error.message);
+      console.error('Error fetching doctor details:', error);
       
-      if (error.response) {
-        console.error('HTTP Status:', error.response.status);
-        console.error('Response Headers:', error.response.headers);
-        console.error('Response Data:', error.response.data);
-        
-        if (error.response.status === 401) {
-          alert('Authentication failed. Please login again.');
-        } else if (error.response.status === 404) {
-          alert('Doctor details endpoint not found. Please check the API.');
-        } else {
-          alert(`Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`);
-        }
-      } else if (error.request) {
-        console.error('Network Error - No response received');
-        console.error('Request details:', error.request);
-        alert('Network error. Please check if the server is running on http://localhost:5050');
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please login again.');
+      } else if (error.response?.status === 404) {
+        alert('Doctor details endpoint not found. Please check the API.');
       } else {
-        console.error('Request setup error:', error.message);
-        alert(`Request error: ${error.message}`);
+        alert(`Error: ${error.response?.data?.message || error.message}`);
       }
       
-      // Set fallback data only after showing the specific error
+      // Set fallback data
       const fallbackData = {
         name: 'Dr. John Smith',
         registrationNumber: 'MED12345',
@@ -203,11 +131,78 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         email: 'doctor@binorix.com'
       };
       
-      console.log('=== USING FALLBACK DATA ===');
-      console.log('Fallback data:', fallbackData);
       setDoctorDetails(fallbackData);
     }
     return null;
+  };
+
+  const savePrescriptionToDatabase = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      if (!patient) {
+        throw new Error('Patient information is required');
+      }
+
+      if (!doctorDetails) {
+        throw new Error('Doctor details are required');
+      }
+
+      if (!signedAddress || !signedTimestamp) {
+        throw new Error('Prescription must be signed before saving');
+      }
+
+      // Prepare medicines data
+      const medicines = rows[0]?.prescriptions.map(medicine => ({
+        name: medicine.name,
+        quantity: medicine.quantity,
+        timing: {
+          morning: medicine.timing.morning,
+          afternoon: medicine.timing.afternoon,
+          night: medicine.timing.night
+        },
+        foodIntake: medicine.foodIntake,
+        instructions: medicine.instructions || `Take ${medicine.foodIntake.toLowerCase()}`
+      })) || [];
+
+      if (medicines.length === 0) {
+        throw new Error('At least one medicine is required');
+      }
+
+      
+      const prescriptionData = {
+        doctorWallet: signedAddress,
+        patientWallet: patient.otherDetails || "0x0000000000000000000000000000000000000000", // Use otherDetails as wallet or default
+        doctorName: doctorDetails.name,
+        doctorPhoneNumber: doctorDetails.registrationNumber,
+        doctorHospital: doctorDetails.hospital,
+        doctorSpecialization: doctorDetails.specialization,
+        doctorEmail: doctorDetails.email,
+        patientName: patient.name,
+        patientPhoneNumber: patient.PhoneNumber,
+        patientEmail: patient.email,
+        patientGender: patient.gender,
+        medicines: medicines,
+        advice: rows[0]?.advice || ''
+      };
+
+      const response = await axios.post('http://localhost:5050/doctor/prescription/newPrescription', prescriptionData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Prescription saved successfully:', response.data);
+      return response.data;
+
+    } catch (error: any) {
+      console.error('Error saving prescription to database:', error);
+      throw error;
+    }
   };
 
   const handleAddMedicine = (rowIndex: number, medicine: string) => {
@@ -220,12 +215,13 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         updated[rowIndex].prescriptions.push({
           name: medicine,
           quantity: "",
-          shift: {
+          timing: {
             morning: false,
             afternoon: false,
             night: false,
           },
-          intake: 0,
+          foodIntake: "Before Food",
+          instructions: "",
         });
       }
       updated[rowIndex].searchTerm = "";
@@ -254,7 +250,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
   ) => {
     setRows((prev) => {
       const updated = structuredClone(prev);
-      updated[rowIndex].prescriptions[medIndex].shift[timingType] = checked;
+      updated[rowIndex].prescriptions[medIndex].timing[timingType] = checked;
       return updated;
     });
   };
@@ -332,6 +328,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
     }
   };
 
+
   const generatePDF = async () => {
     if (!signedAddress || !signedTimestamp) {
       alert("Please sign the prescription before generating the PDF.");
@@ -354,7 +351,19 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
     const currentDoctorDetails = doctorDetails;
     console.log('Using doctor details for PDF:', currentDoctorDetails);
     
-    try {
+        try {
+      // First, save the prescription to the database
+      console.log('💾 Attempting to save prescription to database...');
+      try {
+        await savePrescriptionToDatabase();
+        console.log('✅ Prescription saved to database successfully');
+      } catch (dbError: any) {
+        console.error('⚠️ Database save failed, continuing with PDF generation:', dbError);
+        // Continue with PDF generation even if database save fails
+      }
+      
+      // Then generate the PDF
+      console.log('📄 Starting PDF generation...');
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -408,14 +417,37 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       
       let yPosition = 180;
       const medicines = rows[0]?.prescriptions || [];
+      const pageMargin = 20; // Bottom margin before new page
+      const maxY = pageHeight - pageMargin; // Maximum Y position before new page
       
       medicines.forEach((medicine, index) => {
+        // Check if we need a new page before adding medicine
+        const medicineHeight = 35; // Estimated height needed for one medicine entry
+        
+        if (yPosition + medicineHeight > maxY) {
+          // Add new page
+          pdf.addPage();
+          yPosition = 30; // Start position on new page
+          
+          // Add header on new page
+          pdf.setFontSize(16);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("MEDICAL PRESCRIPTION (Continued)", pageWidth / 2, 20, { align: "center" });
+          
+          pdf.setFontSize(12);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("Rx (Prescription) - Continued:", 15, yPosition);
+          yPosition += 15;
+        }
+        
         // Medicine name with serial number
         pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(12);
         pdf.text(`${index + 1}. ${medicine.name}`, 20, yPosition);
         
         // Medicine details
         pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
         yPosition += 8;
         
         // Quantity
@@ -424,16 +456,27 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         
         // Timing
         const timings = [];
-        if (medicine.shift.morning) timings.push('Morning');
-        if (medicine.shift.afternoon) timings.push('Afternoon');
-        if (medicine.shift.night) timings.push('Night');
+        if (medicine.timing.morning) timings.push('Morning');
+        if (medicine.timing.afternoon) timings.push('Afternoon');
+        if (medicine.timing.night) timings.push('Night');
         
         pdf.text(`   Timing: ${timings.join(', ') || 'As directed'}`, 25, yPosition);
         yPosition += 6;
         
         // Food intake
-        const foodInstruction = medicine.intake === 0 ? 'Before food' : 'After food';
-        pdf.text(`   Instructions: Take ${foodInstruction}`, 25, yPosition);
+        pdf.text(`   Food: ${medicine.foodIntake}`, 25, yPosition);
+        yPosition += 6;
+        
+        // Instructions (if available)
+        if (medicine.instructions && medicine.instructions.trim()) {
+          const instructionLines = pdf.splitTextToSize(`   Instructions: ${medicine.instructions}`, pageWidth - 50);
+          pdf.text(instructionLines, 25, yPosition);
+          yPosition += instructionLines.length * 5;
+        } else {
+          // Default instruction based on food intake
+          pdf.text(`   Instructions: Take ${medicine.foodIntake.toLowerCase()}`, 25, yPosition);
+          yPosition += 6;
+        }
         yPosition += 12;
         
         // Add spacing between medicines
@@ -444,17 +487,46 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       
       // Doctor's Advice
       if (rows[0]?.advice) {
+        const adviceHeight = 40; // Estimated height for advice section
+        
+        // Check if we need a new page for advice
+        if (yPosition + adviceHeight > maxY) {
+          pdf.addPage();
+          yPosition = 30;
+          
+          // Add header on new page
+          pdf.setFontSize(16);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("MEDICAL PRESCRIPTION (Continued)", pageWidth / 2, 20, { align: "center" });
+          yPosition += 20;
+        }
+        
+    pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("Doctor's Advice:", 15, yPosition + 10);
         
         pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
         const adviceLines = pdf.splitTextToSize(rows[0].advice, pageWidth - 30);
         pdf.text(adviceLines, 15, yPosition + 20);
         yPosition += 20 + (adviceLines.length * 5);
       }
       
       // Digital Signature Section
-      const signatureY = Math.max(yPosition + 30, pageHeight - 80);
+      const signatureHeight = 60; // Estimated height for signature section
+      let signatureY = yPosition + 30;
+      
+      // Check if we need a new page for signature
+      if (signatureY + signatureHeight > maxY) {
+        pdf.addPage();
+        signatureY = 30;
+        
+        // Add header on new page
+        pdf.setFontSize(16);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("MEDICAL PRESCRIPTION (Continued)", pageWidth / 2, 20, { align: "center" });
+        signatureY += 20;
+      }
       
       pdf.setLineWidth(0.3);
       pdf.line(15, signatureY - 10, pageWidth - 15, signatureY - 10);
@@ -481,6 +553,19 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.text("This is a computer-generated prescription and does not require a physical signature.", 
                pageWidth / 2, pageHeight - 15, { align: "center" });
       
+      // Add page numbers to all pages
+      const totalPages = (pdf as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 30, pageHeight - 10, { align: "center" });
+        
+        // Add patient name and prescription ID on each page footer
+        pdf.text(`Patient: ${patient?.name} | Prescription ID: RX${Date.now().toString().slice(-6)}`, 
+                 15, pageHeight - 10);
+      }
+
       // Generate filename with patient info and timestamp
       const fileName = `Prescription_${patient?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}_${Date.now().toString().slice(-6)}.pdf`;
       pdf.save(fileName);
@@ -493,11 +578,22 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       // Call the parent callback to reset patient data
       onPrescriptionComplete();
 
-      alert("Professional prescription PDF generated successfully! The form has been cleared. Please sign in again for the next prescription.");
+      alert("✅ Prescription saved to database and multi-page PDF generated successfully! The form has been cleared. Please sign in again for the next prescription.");
 
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+    } catch (error: any) {
+      console.error("=== PDF GENERATION ERROR ===");
+      console.error("Error type:", error.constructor.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      console.error("Current state:", {
+        patient: patient ? 'Available' : 'Missing',
+        doctorDetails: doctorDetails ? 'Available' : 'Missing',
+        signedAddress: signedAddress ? 'Available' : 'Missing',
+        signedTimestamp: signedTimestamp ? 'Available' : 'Missing',
+        medicinesCount: rows[0]?.prescriptions.length || 0
+      });
+      
+      alert(`Failed to generate PDF: ${error.message}. Please check the console for details and try again.`);
     }
   };
 
@@ -509,44 +605,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         <p className="text-gray-600">Add medicines and create prescription for the patient</p>
       </div>
 
-      {/* Debug Section - Remove this after fixing */}
-      <div className="mb-4 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
-        <h3 className="text-sm font-semibold text-yellow-800 mb-2">🔧 API Debug Panel</h3>
-        <div className="flex gap-2 mb-2 flex-wrap">
-          <button
-            onClick={fetchDoctorDetails}
-            className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-          >
-            🔍 Test All Endpoints
-          </button>
-          <button
-            onClick={() => console.log('Current doctor details:', doctorDetails)}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-          >
-            📋 Log Current Data
-          </button>
-          <button
-            onClick={() => {
-              const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-              console.log('Token:', token ? token.substring(0, 50) + '...' : 'Not found');
-              console.log('LocalStorage keys:', Object.keys(localStorage));
-              console.log('SessionStorage keys:', Object.keys(sessionStorage));
-            }}
-            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-          >
-            🔑 Check Token
-          </button>
-        </div>
-        <div className="text-xs text-yellow-700 space-y-1">
-          <p><strong>Current doctor:</strong> {doctorDetails?.name || '❌ Not loaded'}</p>
-          <p><strong>Hospital:</strong> {doctorDetails?.hospital || '❌ Not loaded'}</p>
-          <p><strong>Status:</strong> {doctorDetails ? '✅ Using API data' : '⚠️ Using fallback data'}</p>
-        </div>
-        <div className="mt-2 p-2 bg-yellow-100 rounded text-xs">
-          <strong>⚠️ Previous Error:</strong> 404 Not Found - The API endpoint doesn't exist.<br/>
-          <strong>🔍 Testing endpoints:</strong> /doctor/auth/getDoctorDetails, /api/doctor/*, /doctor/profile, etc.
-        </div>
-      </div>
+      
 
       {/* Validation Status */}
       <div className="mb-6 bg-white p-4 rounded-xl shadow-md border border-gray-200">
@@ -603,7 +662,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
               <th className="py-4 px-6 text-center text-sm font-semibold text-white uppercase tracking-wider">
                 Timing
               </th>
-              <th className="py-4 px-6 text-center text-sm font-semibold text-white uppercase tracking-wider">
+                                                  <th className="py-4 px-6 text-center text-sm font-semibold text-white uppercase tracking-wider">
                 Food Intake
               </th>
               <th className="py-4 px-6 text-left text-sm font-semibold text-white uppercase tracking-wider">
@@ -626,34 +685,34 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                   <tr className="bg-blue-50 border-b border-blue-100">
                     <td className="py-4 px-6 align-top relative">
                       <div className="relative">
-                        <input
-                          type="text"
+                      <input
+                        type="text"
                           placeholder="🔍 Search and add medicine..."
-                          value={row.searchTerm}
-                          onChange={(e) =>
-                            handleChange(rowIndex, "searchTerm", e.target.value)
-                          }
+                        value={row.searchTerm}
+                        onChange={(e) =>
+                          handleChange(rowIndex, "searchTerm", e.target.value)
+                        }
                           className="w-full border-2 border-blue-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none transition-colors placeholder-gray-500"
-                        />
-                        {row.searchTerm && (
+                      />
+                      {row.searchTerm && (
                           <div className="absolute bg-white border-2 border-blue-200 rounded-lg mt-2 max-h-32 overflow-y-auto z-20 w-full shadow-lg">
-                            {filteredMedicines.length > 0 ? (
-                              filteredMedicines.map((med) => (
-                                <div
-                                  key={med}
-                                  onClick={() => handleAddMedicine(rowIndex, med)}
+                          {filteredMedicines.length > 0 ? (
+                            filteredMedicines.map((med) => (
+                              <div
+                                key={med}
+                                onClick={() => handleAddMedicine(rowIndex, med)}
                                   className="px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 font-medium text-gray-700"
-                                >
-                                  {med}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-4 py-2 text-gray-500 italic">
-                                No medicines found
+                              >
+                                {med}
                               </div>
-                            )}
-                          </div>
-                        )}
+                            ))
+                          ) : (
+                              <div className="px-4 py-2 text-gray-500 italic">
+                              No medicines found
+                            </div>
+                          )}
+                        </div>
+                      )}
                       </div>
                     </td>
                     <td className="py-4 px-6"></td>
@@ -671,8 +730,8 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex flex-col gap-3">
-                        <button
-                          onClick={handleSignPrescription}
+                      <button
+                        onClick={handleSignPrescription}
                           disabled={!patient || rows[0].prescriptions.length === 0 || !isConnected}
                           className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 ${
                             !patient || rows[0].prescriptions.length === 0 || !isConnected
@@ -683,8 +742,8 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                           }`}
                         >
                           {signedAddress ? '✅ Signed' : '✍️ Sign Prescription'}
-                        </button>
-                        <button
+                      </button>
+                                              <button
                           onClick={generatePDF}
                           disabled={!signedAddress || !signedTimestamp}
                           className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 ${
@@ -733,7 +792,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={med.shift.morning}
+                              checked={med.timing.morning}
                               onChange={(e) =>
                                 handleTimingChange(rowIndex, medIndex, 'morning', e.target.checked)
                               }
@@ -744,7 +803,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={med.shift.afternoon}
+                              checked={med.timing.afternoon}
                               onChange={(e) =>
                                 handleTimingChange(rowIndex, medIndex, 'afternoon', e.target.checked)
                               }
@@ -755,8 +814,8 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={med.shift.night}
-                              onChange={(e) =>
+                              checked={med.timing.night}
+                          onChange={(e) =>
                                 handleTimingChange(rowIndex, medIndex, 'night', e.target.checked)
                               }
                               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
@@ -767,30 +826,30 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center justify-center gap-3">
-                          <select
-                            value={med.intake}
-                            onChange={(e) =>
-                              handlePrescriptionChange(
-                                rowIndex,
-                                medIndex,
-                                "intake",
-                                parseInt(e.target.value)
-                              )
-                            }
+                        <select
+                          value={med.foodIntake}
+                          onChange={(e) =>
+                            handlePrescriptionChange(
+                              rowIndex,
+                              medIndex,
+                              "foodIntake",
+                              e.target.value
+                            )
+                          }
                             className="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                          >
-                            <option value={0}> Before Food</option>
-                            <option value={1}> After Food</option>
-                          </select>
-                          <button
-                            onClick={() =>
-                              handleRemoveMedicine(rowIndex, medIndex)
-                            }
+                        >
+                            <option value="Before Food">Before Food</option>
+                            <option value="After Food">After Food</option>
+                        </select>
+                        <button
+                          onClick={() =>
+                            handleRemoveMedicine(rowIndex, medIndex)
+                          }
                             className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all duration-200 transform hover:scale-110"
                             title="Remove Medicine"
-                          >
+                        >
                             <Trash size={18} />
-                          </button>
+                        </button>
                         </div>
                       </td>
                       <td className="py-4 px-6"></td>
