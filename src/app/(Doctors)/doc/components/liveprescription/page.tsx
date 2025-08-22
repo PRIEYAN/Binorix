@@ -17,7 +17,6 @@ interface LivePrescription {
     intake: 0 | 1;
   }[];
   advice: string;
-  pharmacyName: string;
   status: "pending" | "processing" | "ready" | "completed" | "cancelled";
   prescribedAt: string;
   updatedAt: string;
@@ -43,7 +42,6 @@ const samplePrescriptions: LivePrescription[] = [
       }
     ],
     advice: "Take with plenty of water. Complete the full course.",
-    pharmacyName: "HealthPlus Pharmacy",
     status: "processing",
     prescribedAt: "2024-01-15 10:30:00",
     updatedAt: "2024-01-15 11:15:00"
@@ -61,8 +59,7 @@ const samplePrescriptions: LivePrescription[] = [
       }
     ],
     advice: "Take after meals. Avoid alcohol.",
-    pharmacyName: "MediCare Central",
-    status: "ready",
+    status: "processing",
     prescribedAt: "2024-01-15 09:45:00",
     updatedAt: "2024-01-15 12:00:00"
   },
@@ -85,10 +82,49 @@ const samplePrescriptions: LivePrescription[] = [
       }
     ],
     advice: "Monitor blood sugar levels daily.",
-    pharmacyName: "QuickMeds Pharmacy",
-    status: "completed",
+    status: "processing",
     prescribedAt: "2024-01-15 08:20:00",
     updatedAt: "2024-01-15 14:30:00"
+  },
+  {
+    id: "RX004",
+    patientName: "Emma Brown",
+    patientPhone: "+91 9876543213",
+    medicines: [
+      {
+        name: "Cetirizine",
+        quantity: "10",
+        timing: { morning: false, afternoon: false, night: true },
+        intake: 1
+      }
+    ],
+    advice: "Take before bedtime for allergies.",
+    status: "processing",
+    prescribedAt: "2024-01-15 15:30:00",
+    updatedAt: "2024-01-15 16:45:00"
+  },
+  {
+    id: "RX005",
+    patientName: "David Lee",
+    patientPhone: "+91 9876543214",
+    medicines: [
+      {
+        name: "Azithromycin",
+        quantity: "5",
+        timing: { morning: true, afternoon: false, night: false },
+        intake: 0
+      },
+      {
+        name: "Ciprofloxacin",
+        quantity: "7",
+        timing: { morning: true, afternoon: false, night: true },
+        intake: 1
+      }
+    ],
+    advice: "Complete antibiotic course. Take probiotics.",
+    status: "processing",
+    prescribedAt: "2024-01-15 11:15:00",
+    updatedAt: "2024-01-15 13:20:00"
   }
 ];
 
@@ -184,9 +220,6 @@ export default function LivePrescriptions() {
               <th className="py-4 px-6 text-left text-sm font-semibold text-white uppercase tracking-wider">
                 Doctor's Advice
               </th>
-              <th className="py-4 px-6 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                Pharmacy Name
-              </th>
               <th className="py-4 px-6 text-center text-sm font-semibold text-white uppercase tracking-wider">
                 Status
               </th>
@@ -252,15 +285,6 @@ export default function LivePrescriptions() {
                       </td>
                     ) : null}
 
-                    {/* Pharmacy Name - only show on first medicine row */}
-                    {medIndex === 0 ? (
-                      <td className="py-4 px-6 align-top" rowSpan={prescription.medicines.length}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm font-medium text-gray-800">{prescription.pharmacyName}</span>
-                        </div>
-                      </td>
-                    ) : null}
 
                     {/* Status - only show on first medicine row */}
                     {medIndex === 0 ? (
@@ -296,21 +320,36 @@ export default function LivePrescriptions() {
       </div>
 
       {/* Statistics */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-        {['pending', 'processing', 'ready', 'completed', 'cancelled'].map((status) => {
-          const count = prescriptions.filter(p => p.status === status).length;
-          return (
-            <div key={status} className={`p-4 rounded-lg border-2 ${getStatusColor(status as LivePrescription['status'])}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium capitalize">{status}</p>
-                  <p className="text-2xl font-bold">{count}</p>
-                </div>
-                {getStatusIcon(status as LivePrescription['status'])}
-              </div>
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-4 rounded-lg border-2 bg-blue-100 text-blue-800 border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Currently Processing</p>
+              <p className="text-2xl font-bold">{prescriptions.length}</p>
             </div>
-          );
-        })}
+            <Activity className="w-8 h-8 text-blue-500 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg border-2 bg-green-50 text-green-800 border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Active Patients</p>
+              <p className="text-2xl font-bold">{new Set(prescriptions.map(p => p.patientName)).size}</p>
+            </div>
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg border-2 bg-purple-50 text-purple-800 border-purple-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Total Medicines</p>
+              <p className="text-2xl font-bold">{prescriptions.reduce((total, p) => total + p.medicines.length, 0)}</p>
+            </div>
+            <Building2 className="w-8 h-8 text-purple-500" />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -2,13 +2,13 @@
 
 import WalletConnect from "@/app/providers";
 import { IconAddressBook, IconNetwork, IconCurrencyEthereum, IconWallet } from "@tabler/icons-react";
-import { avalanche, mainnet, polygon, optimism, arbitrum, base } from 'wagmi/chains';
+import { avalanche, mainnet, polygon, optimism, arbitrum, base, bsc } from 'wagmi/chains';
 import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const config = getDefaultConfig({
   appName: 'My RainbowKit App',
   projectId: '322a547413a527fe6601236be62479a4',
-  chains: [avalanche, mainnet, polygon, optimism, arbitrum, base],
+  chains: [avalanche, mainnet, polygon, optimism, arbitrum, base, bsc],
   ssr: true, 
 });
 
@@ -28,7 +28,8 @@ function WalletInfo() {
       10: 'Optimism',
       42161: 'Arbitrum',
       8453: 'Base',
-      43114: 'Avalanche'
+      43114: 'Avalanche',
+      56: 'Binance Smart Chain'
     };
     return chainMap[chainId] || `Chain ID: ${chainId}`;
   };

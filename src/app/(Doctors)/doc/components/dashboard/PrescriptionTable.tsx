@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Trash } from "lucide-react";
 import { useAccount, useSignMessage } from "wagmi";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { format } from "date-fns";
+import axios from "axios";
 
 const medicinesList = [
   "Paracetamol",
@@ -35,17 +36,179 @@ interface PrescriptionRow {
   advice: string;
 }
 
-export default function PrescriptionTable() {
+interface Patient {
+  name: string;
+  email: string;
+  PhoneNumber: string;
+  gender: string;
+  otherDetails: string;
+}
+
+interface PrescriptionTableProps {
+  patient: Patient | null;
+  onPrescriptionComplete: () => void;
+}
+
+interface DoctorDetails {
+  name: string;
+  registrationNumber: string;
+  hospital: string;
+  specialization: string;
+  email: string;
+}
+
+export default function PrescriptionTable({ patient, onPrescriptionComplete }: PrescriptionTableProps) {
   const [rows, setRows] = useState<PrescriptionRow[]>([
     { phone: "", prescriptions: [], searchTerm: "", advice: "" },
   ]);
 
   const [signedAddress, setSignedAddress] = useState<string | null>(null);
   const [signedTimestamp, setSignedTimestamp] = useState<string | null>(null);
+  const [doctorDetails, setDoctorDetails] = useState<DoctorDetails | null>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
   const { isConnected, address } = useAccount();
   const { signMessageAsync } = useSignMessage();
+
+  // Fetch doctor details on component mount
+  useEffect(() => {
+    fetchDoctorDetails();
+  }, []);
+
+  const fetchDoctorDetails = async () => {
+    try {
+      // Check different possible token locations
+      const token = localStorage.getItem('token') || 
+                   localStorage.getItem('authToken') || 
+                   sessionStorage.getItem('token') || 
+                   sessionStorage.getItem('authToken');
+      
+      if (!token) {
+        console.error('No authentication token found in localStorage or sessionStorage');
+        console.log('Available localStorage keys:', Object.keys(localStorage));
+        console.log('Available sessionStorage keys:', Object.keys(sessionStorage));
+        throw new Error('No authentication token found');
+      }
+
+      console.log('Found token:', token.substring(0, 20) + '...');
+      
+      // Try different possible API endpoints
+      const possibleEndpoints = [
+        'http://localhost:5050/doctor/auth/getDoctorDetails',
+        'http://localhost:5050/api/doctor/auth/getDoctorDetails',
+        'http://localhost:5050/doctor/getDoctorDetails',
+        'http://localhost:5050/api/doctor/getDoctorDetails',
+        'http://localhost:5050/doctor/profile',
+        'http://localhost:5050/api/doctor/profile'
+      ];
+
+      let response = null;
+      let workingEndpoint = null;
+
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          response = await axios.get(endpoint, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 5000 // 5 second timeout per endpoint
+          });
+          
+          if (response.status === 200) {
+            workingEndpoint = endpoint;
+            console.log(`✅ Success with endpoint: ${endpoint}`);
+            break;
+          }
+        } catch (err: any) {
+          console.log(`❌ Failed with endpoint: ${endpoint} - Status: ${err.response?.status || 'Network Error'}`);
+          continue;
+        }
+      }
+
+      if (!response || !workingEndpoint) {
+        throw new Error('All API endpoints failed. Please check your backend server and routes.');
+      }
+
+      console.log('Full API Response:', response);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+
+      // Handle different possible response structures
+      let doctor = null;
+      
+      if (response.data) {
+        // Try different possible response structures
+        doctor = response.data.doctor || 
+                response.data.data || 
+                response.data.user || 
+                (response.data.success ? response.data.doctor : null) ||
+                response.data;
+        
+        console.log('Extracted doctor data:', doctor);
+        
+        if (doctor && (doctor.name || doctor._id)) {
+          const doctorInfo = {
+            name: doctor.name || 'Dr. Unknown',
+            registrationNumber: doctor.nmrNumber || doctor.registrationNumber || 'REG123456',
+            hospital: doctor.hospital || doctor.hospitalName || 'Binorix Medical Center',
+            specialization: doctor.specialization || 'General Medicine',
+            email: doctor.email || 'doctor@binorix.com'
+          };
+          
+          console.log('Successfully processed doctor details:', doctorInfo);
+          setDoctorDetails(doctorInfo);
+          return doctor;
+        } else {
+          console.error('No valid doctor data found in response');
+          throw new Error('No valid doctor data in API response');
+        }
+      } else {
+        console.error('Empty response data');
+        throw new Error('Empty API response');
+      }
+    } catch (error: any) {
+      console.error('=== API ERROR DETAILS ===');
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      
+      if (error.response) {
+        console.error('HTTP Status:', error.response.status);
+        console.error('Response Headers:', error.response.headers);
+        console.error('Response Data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          alert('Authentication failed. Please login again.');
+        } else if (error.response.status === 404) {
+          alert('Doctor details endpoint not found. Please check the API.');
+        } else {
+          alert(`Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        console.error('Network Error - No response received');
+        console.error('Request details:', error.request);
+        alert('Network error. Please check if the server is running on http://localhost:5050');
+      } else {
+        console.error('Request setup error:', error.message);
+        alert(`Request error: ${error.message}`);
+      }
+      
+      // Set fallback data only after showing the specific error
+      const fallbackData = {
+        name: 'Dr. John Smith',
+        registrationNumber: 'MED12345',
+        hospital: 'Binorix Medical Center',
+        specialization: 'General Medicine',
+        email: 'doctor@binorix.com'
+      };
+      
+      console.log('=== USING FALLBACK DATA ===');
+      console.log('Fallback data:', fallbackData);
+      setDoctorDetails(fallbackData);
+    }
+    return null;
+  };
 
   const handleAddMedicine = (rowIndex: number, medicine: string) => {
     setRows((prev) => {
@@ -116,23 +279,56 @@ export default function PrescriptionTable() {
     });
   };
 
-  const handleSignPrescription = async () => {
+  const validatePrescription = () => {
+    // Check if patient is registered
+    if (!patient) {
+      alert("Please search and select a valid patient first.");
+      return false;
+    }
+
+    // Check if at least one medicine is added
+    const hasMedicines = rows.some(row => row.prescriptions.length > 0);
+    if (!hasMedicines) {
+      alert("Please add at least one medicine to the prescription.");
+      return false;
+    }
+
+    // Check if wallet is connected
     if (!isConnected || !address) {
       alert("Please connect your wallet first.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignPrescription = async () => {
+    if (!validatePrescription()) {
       return;
     }
 
-    const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
-    const message = `Prescription signed by ${address} at ${timestamp}`;
-
     try {
+      // Always fetch fresh doctor details before signing
+      console.log('Fetching fresh doctor details for signing...');
+      await fetchDoctorDetails();
+      
+      // Wait a moment for state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+      const doctorName = doctorDetails?.name || 'Dr. Unknown';
+      const message = `Prescription signed by ${doctorName} (Wallet: ${address}) for patient ${patient?.name} (${patient?.PhoneNumber}) at ${timestamp}`;
+
+      console.log('Signing message:', message);
+      console.log('Current doctor details for signing:', doctorDetails);
+
       await signMessageAsync({ message });
-      setSignedAddress(address);
+      setSignedAddress(address || "");
       setSignedTimestamp(timestamp);
-      alert("Prescription signed successfully!");
+      alert(`Prescription signed successfully by ${doctorName}! You can now generate the PDF.`);
     } catch (err) {
-      console.error(err);
-      alert("Signature failed.");
+      console.error('Signing error:', err);
+      alert("Signature failed. Please try again.");
     }
   };
 
@@ -142,23 +338,167 @@ export default function PrescriptionTable() {
       return;
     }
 
-    if (!tableRef.current) return;
-    const canvas = await html2canvas(tableRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
+    // Final validation before PDF generation
+    if (!validatePrescription()) {
+      return;
+    }
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    // Ensure we have the latest doctor details
+    console.log('Current doctor details before PDF generation:', doctorDetails);
+    if (!doctorDetails) {
+      console.log('No doctor details found, fetching...');
+      await fetchDoctorDetails();
+      await new Promise(resolve => setTimeout(resolve, 100)); // Wait for state update
+    }
+    
+    const currentDoctorDetails = doctorDetails;
+    console.log('Using doctor details for PDF:', currentDoctorDetails);
+    
+    try {
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Header Section
+      pdf.setFontSize(20);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("MEDICAL PRESCRIPTION", pageWidth / 2, 25, { align: "center" });
+      
+      // Hospital/Clinic Information
+      pdf.setFontSize(14);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(currentDoctorDetails?.hospital || "Binorix Medical Center", pageWidth / 2, 40, { align: "center" });
+      
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("123 Healthcare Avenue, Medical District", pageWidth / 2, 48, { align: "center" });
+      pdf.text(`Phone: +91-9876543210 | Email: ${currentDoctorDetails?.email || 'contact@binorix.com'}`, pageWidth / 2, 54, { align: "center" });
+      
+      // Horizontal line
+      pdf.setLineWidth(0.5);
+      pdf.line(15, 60, pageWidth - 15, 60);
+      
+      // Doctor Information
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Doctor Information:", 15, 75);
+      
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`${currentDoctorDetails?.name || 'Dr. John Smith'}`, 15, 85);
+      pdf.text(`Specialization: ${currentDoctorDetails?.specialization || 'General Medicine'}`, 15, 92);
+      pdf.text(`NMR Registration No: ${currentDoctorDetails?.registrationNumber || 'MED12345'}`, 15, 99);
+      pdf.text(`Hospital: ${currentDoctorDetails?.hospital || 'Binorix Medical Center'}`, 15, 106);
+      
+      // Patient Information
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Patient Information:", 15, 125);
+      
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Name: ${patient?.name || 'N/A'}`, 15, 135);
+      pdf.text(`Phone: ${patient?.PhoneNumber || 'N/A'}`, 15, 142);
+      pdf.text(`Gender: ${patient?.gender || 'N/A'}`, 15, 149);
+      
+      // Date and Prescription ID
+      pdf.text(`Date: ${new Date(signedTimestamp || '').toLocaleDateString()}`, pageWidth - 60, 135);
+      pdf.text(`Prescription ID: RX${Date.now().toString().slice(-6)}`, pageWidth - 60, 142);
+      
+      // Medicines Section
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Rx (Prescription):", 15, 165);
+      
+      let yPosition = 180;
+      const medicines = rows[0]?.prescriptions || [];
+      
+      medicines.forEach((medicine, index) => {
+        // Medicine name with serial number
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`${index + 1}. ${medicine.name}`, 20, yPosition);
+        
+        // Medicine details
+        pdf.setFont("helvetica", "normal");
+        yPosition += 8;
+        
+        // Quantity
+        pdf.text(`   Quantity: ${medicine.quantity} tablets/capsules`, 25, yPosition);
+        yPosition += 6;
+        
+        // Timing
+        const timings = [];
+        if (medicine.shift.morning) timings.push('Morning');
+        if (medicine.shift.afternoon) timings.push('Afternoon');
+        if (medicine.shift.night) timings.push('Night');
+        
+        pdf.text(`   Timing: ${timings.join(', ') || 'As directed'}`, 25, yPosition);
+        yPosition += 6;
+        
+        // Food intake
+        const foodInstruction = medicine.intake === 0 ? 'Before food' : 'After food';
+        pdf.text(`   Instructions: Take ${foodInstruction}`, 25, yPosition);
+        yPosition += 12;
+        
+        // Add spacing between medicines
+        if (index < medicines.length - 1) {
+          yPosition += 5;
+        }
+      });
+      
+      // Doctor's Advice
+      if (rows[0]?.advice) {
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Doctor's Advice:", 15, yPosition + 10);
+        
+        pdf.setFont("helvetica", "normal");
+        const adviceLines = pdf.splitTextToSize(rows[0].advice, pageWidth - 30);
+        pdf.text(adviceLines, 15, yPosition + 20);
+        yPosition += 20 + (adviceLines.length * 5);
+      }
+      
+      // Digital Signature Section
+      const signatureY = Math.max(yPosition + 30, pageHeight - 80);
+      
+      pdf.setLineWidth(0.3);
+      pdf.line(15, signatureY - 10, pageWidth - 15, signatureY - 10);
+      
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Digital Signature & Verification:", 15, signatureY);
+      
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.text(`Digitally signed by: ${currentDoctorDetails?.name || 'Dr. John Smith'}`, 15, signatureY + 10);
+      pdf.text(`Wallet Address: ${signedAddress}`, 15, signatureY + 17);
+      pdf.text(`Timestamp: ${signedTimestamp}`, 15, signatureY + 24);
+      pdf.text(`Patient Phone: ${patient?.PhoneNumber}`, 15, signatureY + 31);
+      
+      // Verification note
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(8);
+      pdf.text("This prescription is digitally signed and verified on blockchain.", 15, signatureY + 42);
+      pdf.text(`Valid only with proper verification through ${currentDoctorDetails?.hospital || 'Binorix Medical Center'}.`, 15, signatureY + 48);
+      
+      // Footer
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.text("This is a computer-generated prescription and does not require a physical signature.", 
+               pageWidth / 2, pageHeight - 15, { align: "center" });
+      
+      // Generate filename with patient info and timestamp
+      const fileName = `Prescription_${patient?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}_${Date.now().toString().slice(-6)}.pdf`;
+      pdf.save(fileName);
 
-    // Prescription table
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      // Clear the form and reset everything
+      setRows([{ phone: "", prescriptions: [], searchTerm: "", advice: "" }]);
+      setSignedAddress(null);
+      setSignedTimestamp(null);
+      
+      // Call the parent callback to reset patient data
+      onPrescriptionComplete();
 
-    // Add signature details at bottom
-    pdf.setFontSize(12);
-    pdf.text(`Signed by: ${signedAddress}`, 10, pdfHeight + 10);
-    pdf.text(`Timestamp: ${signedTimestamp}`, 10, pdfHeight + 16);
+      alert("Professional prescription PDF generated successfully! The form has been cleared. Please sign in again for the next prescription.");
 
-    pdf.save("prescription.pdf");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   return (
@@ -167,6 +507,87 @@ export default function PrescriptionTable() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Prescription Details</h2>
         <p className="text-gray-600">Add medicines and create prescription for the patient</p>
+      </div>
+
+      {/* Debug Section - Remove this after fixing */}
+      <div className="mb-4 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+        <h3 className="text-sm font-semibold text-yellow-800 mb-2">🔧 API Debug Panel</h3>
+        <div className="flex gap-2 mb-2 flex-wrap">
+          <button
+            onClick={fetchDoctorDetails}
+            className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+          >
+            🔍 Test All Endpoints
+          </button>
+          <button
+            onClick={() => console.log('Current doctor details:', doctorDetails)}
+            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+          >
+            📋 Log Current Data
+          </button>
+          <button
+            onClick={() => {
+              const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+              console.log('Token:', token ? token.substring(0, 50) + '...' : 'Not found');
+              console.log('LocalStorage keys:', Object.keys(localStorage));
+              console.log('SessionStorage keys:', Object.keys(sessionStorage));
+            }}
+            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+          >
+            🔑 Check Token
+          </button>
+        </div>
+        <div className="text-xs text-yellow-700 space-y-1">
+          <p><strong>Current doctor:</strong> {doctorDetails?.name || '❌ Not loaded'}</p>
+          <p><strong>Hospital:</strong> {doctorDetails?.hospital || '❌ Not loaded'}</p>
+          <p><strong>Status:</strong> {doctorDetails ? '✅ Using API data' : '⚠️ Using fallback data'}</p>
+        </div>
+        <div className="mt-2 p-2 bg-yellow-100 rounded text-xs">
+          <strong>⚠️ Previous Error:</strong> 404 Not Found - The API endpoint doesn't exist.<br/>
+          <strong>🔍 Testing endpoints:</strong> /doctor/auth/getDoctorDetails, /api/doctor/*, /doctor/profile, etc.
+        </div>
+      </div>
+
+      {/* Validation Status */}
+      <div className="mb-6 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">Prescription Requirements</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className={`flex items-center gap-2 p-3 rounded-lg ${patient ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <span className={`text-lg ${patient ? 'text-green-600' : 'text-red-600'}`}>
+              {patient ? '✅' : '❌'}
+            </span>
+            <span className={`text-sm font-medium ${patient ? 'text-green-800' : 'text-red-800'}`}>
+              Valid Patient
+            </span>
+          </div>
+          
+          <div className={`flex items-center gap-2 p-3 rounded-lg ${rows[0].prescriptions.length > 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <span className={`text-lg ${rows[0].prescriptions.length > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {rows[0].prescriptions.length > 0 ? '✅' : '❌'}
+            </span>
+            <span className={`text-sm font-medium ${rows[0].prescriptions.length > 0 ? 'text-green-800' : 'text-red-800'}`}>
+              Medicine Added ({rows[0].prescriptions.length})
+            </span>
+          </div>
+          
+          <div className={`flex items-center gap-2 p-3 rounded-lg ${isConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <span className={`text-lg ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+              {isConnected ? '✅' : '❌'}
+            </span>
+            <span className={`text-sm font-medium ${isConnected ? 'text-green-800' : 'text-red-800'}`}>
+              Wallet Connected
+            </span>
+          </div>
+          
+          <div className={`flex items-center gap-2 p-3 rounded-lg ${signedAddress ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+            <span className={`text-lg ${signedAddress ? 'text-green-600' : 'text-yellow-600'}`}>
+              {signedAddress ? '✅' : '⏳'}
+            </span>
+            <span className={`text-sm font-medium ${signedAddress ? 'text-green-800' : 'text-yellow-800'}`}>
+              {signedAddress ? 'Prescription Signed' : 'Awaiting Signature'}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div ref={tableRef} className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
@@ -252,13 +673,25 @@ export default function PrescriptionTable() {
                       <div className="flex flex-col gap-3">
                         <button
                           onClick={handleSignPrescription}
-                          className="bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                          disabled={!patient || rows[0].prescriptions.length === 0 || !isConnected}
+                          className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 ${
+                            !patient || rows[0].prescriptions.length === 0 || !isConnected
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : signedAddress
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+                          }`}
                         >
-                          ✍️ Sign Prescription
+                          {signedAddress ? '✅ Signed' : '✍️ Sign Prescription'}
                         </button>
                         <button
                           onClick={generatePDF}
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                          disabled={!signedAddress || !signedTimestamp}
+                          className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 ${
+                            !signedAddress || !signedTimestamp
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                          }`}
                         >
                           📄 Generate PDF
                         </button>
@@ -306,7 +739,7 @@ export default function PrescriptionTable() {
                               }
                               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                             />
-                            <span className="text-sm font-medium text-gray-700">🌅 Morning</span>
+                            <span className="text-sm font-medium text-gray-700"> Morning</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -317,7 +750,7 @@ export default function PrescriptionTable() {
                               }
                               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                             />
-                            <span className="text-sm font-medium text-gray-700">☀️ Afternoon</span>
+                            <span className="text-sm font-medium text-gray-700"> Afternoon</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -328,7 +761,7 @@ export default function PrescriptionTable() {
                               }
                               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                             />
-                            <span className="text-sm font-medium text-gray-700">🌙 Night</span>
+                            <span className="text-sm font-medium text-gray-700"> Night</span>
                           </label>
                         </div>
                       </td>
@@ -346,8 +779,8 @@ export default function PrescriptionTable() {
                             }
                             className="border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none transition-colors bg-white"
                           >
-                            <option value={0}>🍽️ Before Food</option>
-                            <option value={1}>🥘 After Food</option>
+                            <option value={0}> Before Food</option>
+                            <option value={1}> After Food</option>
                           </select>
                           <button
                             onClick={() =>

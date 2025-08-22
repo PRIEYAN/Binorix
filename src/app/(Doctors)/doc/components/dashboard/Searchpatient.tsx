@@ -8,9 +8,9 @@ import { Search } from 'lucide-react';
 interface PatientData {
   name: string;
   email: string;
-  mobile: string;
+  PhoneNumber: string;
   gender: string;
-  issues: string;
+  otherDetails: string;
 }
 
 interface ApiResponse {

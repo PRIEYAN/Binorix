@@ -7,9 +7,9 @@ import PrescriptionTable from "../dashboard/PrescriptionTable";
 interface Patient {
   name: string;
   email: string;
-  mobile: string;
+  PhoneNumber: string;
   gender: string;
-  issues: string;
+  otherDetails: string;
 }
 
 export default function MobileNumberSearch() {
@@ -26,6 +26,11 @@ export default function MobileNumberSearch() {
         setPatient(null);
     };
 
+    const handlePrescriptionComplete = () => {
+        setStatus("idle");
+        setPatient(null);
+    };
+
   return(
     <>
      <SearchPatient 
@@ -33,7 +38,10 @@ export default function MobileNumberSearch() {
         onPatientNotFound={handlePatientNotFound}
      />
      <PatientDetails status={status} patient={patient} />
-     <PrescriptionTable/>
+     <PrescriptionTable 
+        patient={patient} 
+        onPrescriptionComplete={handlePrescriptionComplete}
+     />
     </>
   );
 }
