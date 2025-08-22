@@ -4,14 +4,13 @@ import { useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
-import PatientDetails from './PatientDetails'; 
 
 interface PatientData {
   name: string;
-  age: number;
-  gender: string;
+  email: string;
   mobile: string;
-  address: string;
+  gender: string;
+  issues: string;
 }
 
 interface ApiResponse {
@@ -20,7 +19,12 @@ interface ApiResponse {
   data?: PatientData;
 }
 
-export default function SearchPatient() {
+interface SearchPatientProps {
+  onPatientFound: (patient: PatientData) => void;
+  onPatientNotFound: () => void;
+}
+
+export default function SearchPatient({ onPatientFound, onPatientNotFound }: SearchPatientProps) {
   const [numberPart, setNumberPart] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,16 +52,19 @@ export default function SearchPatient() {
   
       if (response.status === 200 || response.status === 201) {
         if (response.data?.patient) {
-          const Patient = response.data?.patient;
+          const patient = response.data?.patient;
           setSuccessMsg('Mobile number is registered with Zypher.');
-          setPatientData(response.data.patient);
-          console.log(response.data.patient);
+          setPatientData(patient);
+          onPatientFound(patient);
+          console.log(patient);
         } else {
           setError(response.data?.message || 'Mobile number not found.');
           setPatientData(null);
+          onPatientNotFound();
         }
       } else {
         setError('Unexpected server response.');
+        onPatientNotFound();
       }
     } catch (err: any) {
       console.error('Axios error:', err);
@@ -73,6 +80,7 @@ export default function SearchPatient() {
         setError(`Error: ${err.message}`);
       }
       setPatientData(null);
+      onPatientNotFound();
     } finally {
       setLoading(false);
     }
@@ -116,11 +124,6 @@ export default function SearchPatient() {
 
       {error && <p className="text-sm text-red-500">{error}</p>}
       {successMsg && <p className="text-sm text-green-600">{successMsg}</p>}
-      
-      <PatientDetails
-  status={patientData ? 'success' : error ? 'error' : 'idle'}
-  patient={patientData}
-/>
     </div>
   );
 }

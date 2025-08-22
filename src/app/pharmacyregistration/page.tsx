@@ -77,7 +77,7 @@ export default function AccountRecovery() {
         
         // Redirect after 2 seconds
         setTimeout(() => {
-          router.push("/pharmacyDashboard");
+          router.push("/PharmacyDashboard");
         }, 1000);
       }catch (error: unknown) {
             if (axios.isAxiosError(error) && error.response) {

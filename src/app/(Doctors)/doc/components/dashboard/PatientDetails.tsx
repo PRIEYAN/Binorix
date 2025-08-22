@@ -1,15 +1,30 @@
 import React from "react";
+import { User, Mail, Phone, Venus, Stethoscope } from "lucide-react";
 
-interface PatientData {
-  name?: string;
-  email?: string;
-  mobile?: string;
-  gender?: string;
-  issues?: string;
+interface Patient {
+  name: string;
+  email: string;
+  mobile: string;
+  gender: string;
+  issues: string;
 }
 
-export default function PatientDetails({ patientData }: { patientData: any}) {
-  if (!patientData) return null;
+interface PatientDetailsProps {
+  status: string;
+  patient: Patient | null;
+}
+
+export default function PatientDetails({ status, patient }: PatientDetailsProps) {
+  if (!patient) {
+    if (status === 'error') {
+      return (
+        <div className="w-full mx-auto mt-6 bg-red-50 border border-red-200 rounded-xl p-6">
+          <p className="text-red-600 text-center">Patient not found. Please check the mobile number and try again.</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="w-full mx-auto mt-6 bg-white shadow-lg rounded-xl p-6 border border-gray-200">
@@ -18,23 +33,23 @@ export default function PatientDetails({ patientData }: { patientData: any}) {
         <div className="flex flex-row gap-4 items-start justify-center pr-4 border-r border-gray-300">
             <div className="flex flex-row gap-4 items-center">
                 <User className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-800">{patientData.name}</span>
+                <span className="font-semibold text-gray-800">{patient.name}</span>
             </div>
             <div className="flex flex-row gap-4 items-center">
                 <Mail className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patientData.email}</span>
+                <span className="font-semibold text-gray-700">{patient.email}</span>
             </div>
             <div className="flex flex-row gap-4 items-center">
                 <Phone className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patientData.mobile}</span>
+                <span className="font-semibold text-gray-700">{patient.mobile}</span>
             </div>
             <div className="flex flex-row gap-4 items-center">
                 <Venus className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patientData.gender}</span>
+                <span className="font-semibold text-gray-700">{patient.gender}</span>
             </div>
             <div className="flex flex-row gap-4 items-center justify-start">
                 <Stethoscope className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patientData.issues}</span>
+                <span className="font-semibold text-gray-700">{patient.issues}</span>
             </div>
         </div>
       </div>

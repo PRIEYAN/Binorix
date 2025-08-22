@@ -1,5 +1,5 @@
 'use client';
-import { useEffect,useState } from "react";
+import { useState } from "react";
 import SearchPatient from "../dashboard/Searchpatient";
 import PatientDetails from "../dashboard/PatientDetails";
 import PrescriptionTable from "../dashboard/PrescriptionTable";
@@ -13,12 +13,25 @@ interface Patient {
 }
 
 export default function MobileNumberSearch() {
-    const [status, setStatus] = useState<string>("");
+    const [status, setStatus] = useState<string>("idle");
     const [patient, setPatient] = useState<Patient | null>(null);
+
+    const handlePatientFound = (foundPatient: Patient) => {
+        setStatus("success");
+        setPatient(foundPatient);
+    };
+
+    const handlePatientNotFound = () => {
+        setStatus("error");
+        setPatient(null);
+    };
 
   return(
     <>
-     <SearchPatient/>
+     <SearchPatient 
+        onPatientFound={handlePatientFound}
+        onPatientNotFound={handlePatientNotFound}
+     />
      <PatientDetails status={status} patient={patient} />
      <PrescriptionTable/>
     </>
