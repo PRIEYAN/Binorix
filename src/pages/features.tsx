@@ -1,29 +1,33 @@
 "use client";
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShieldCheck, BadgeCheck, Trash2, Lock } from "lucide-react";
+import { ShieldCheck, BadgeCheck, Trash2, Lock, Zap, Clock, Globe, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
   {
-    icon: <ShieldCheck className="w-10 h-10 text-primary" />,
-    title: "Secure Blockchain Storage",
-    description: "Prescriptions are immutably stored on the blockchain, ensuring tamper-proof records and ultimate security.",
+    icon: <ShieldCheck className="w-8 h-8 text-white" />,
+    title: "Secure Storage",
+    description: "Prescriptions stored securely on blockchain technology.",
+    gradient: "from-blue-500 to-blue-600",
   },
   {
-    icon: <BadgeCheck className="w-10 h-10 text-primary" />,
-    title: "Verified Pharmacy Onboarding",
-    description: "Only licensed and verified pharmacies can join our network, guaranteeing authenticity and patient safety.",
+    icon: <BadgeCheck className="w-8 h-8 text-white" />,
+    title: "Verified Pharmacies",
+    description: "Only licensed pharmacies can access the network.",
+    gradient: "from-green-500 to-emerald-600",
   },
   {
-    icon: <Trash2 className="w-10 h-10 text-primary" />,
-    title: "Waste Disposal Compliance",
-    description: "Track and manage the disposal of controlled substances, ensuring full compliance with environmental regulations.",
+    icon: <Lock className="w-8 h-8 text-white" />,
+    title: "Privacy Protected",
+    description: "Patient data is encrypted and kept confidential.",
+    gradient: "from-purple-500 to-indigo-600",
   },
   {
-    icon: <Lock className="w-10 h-10 text-primary" />,
-    title: "Patient Data Privacy",
-    description: "Patient confidentiality is paramount. Our system is built with robust privacy controls from the ground up.",
+    icon: <Zap className="w-8 h-8 text-white" />,
+    title: "Fast Processing",
+    description: "Quick prescription verification and dispensing.",
+    gradient: "from-orange-500 to-red-500",
   },
 ];
 
@@ -33,57 +37,103 @@ export default function Features() {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.2,
+        staggerChildren: 0.15,
+        delayChildren: 0.3,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { 
+      y: 60, 
+      opacity: 0,
+      scale: 0.8,
+    },
     visible: {
       y: 0,
       opacity: 1,
+      scale: 1,
       transition: {
         type: "spring",
         stiffness: 100,
+        damping: 12,
       },
     },
   };
 
   return (
-    <section id="features" className="py-12 sm:py-24 bg-background">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold font-headline">Why Choose <span className="text-blue-600 font-bold">Prescripto?</span></h2>
-          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Our platform is built on a foundation of security, trust, and innovation to revolutionize the prescription process.
+    <section id="features" className="py-16 sm:py-24 bg-white relative overflow-hidden">
+      {/* Background Medical Grid */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%234F46E5' fill-opacity='0.1'%3E%3Cpath d='M50 50c0-13.8-11.2-25-25-25S0 36.2 0 50s11.2 25 25 25 25-11.2 25-25zm-25-15c8.3 0 15 6.7 15 15s-6.7 15-15 15-15-6.7-15-15 6.7-15 15-15z'/%3E%3C/g%3E%3C/svg%3E")`,
+        }} />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          <motion.div
+            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full mb-6 shadow-lg"
+            whileHover={{ scale: 1.1, rotate: -10 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <Heart className="w-10 h-10 text-white" />
+          </motion.div>
+          
+          <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">
+            Why Choose{" "}
+            <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+              Binorix?
+            </span>
+          </h2>
+          
+          <p className="text-gray-600 text-lg mt-4 max-w-2xl mx-auto">
+            Key features that make digital prescriptions simple and secure.
           </p>
-        </div>
+        </motion.div>
+
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
         >
-          {features.map((feature) => (
-            <motion.div key={feature.title} variants={itemVariants}>
-              <Card className="text-center flex flex-col items-center p-6 border-2 border-transparent hover:border-primary/50 transition-colors duration-300 shadow-lg hover:shadow-primary/20 bg-card h-full">
+          {features.map((feature, index) => (
+            <motion.div 
+              key={feature.title} 
+              variants={itemVariants}
+              whileHover={{ 
+                y: -8,
+                transition: { type: "spring", stiffness: 300 }
+              }}
+            >
+              <Card className="text-center p-6 border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full">
                 <CardHeader className="p-0 mb-4">
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
+                  <div className={`flex items-center justify-center w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-xl shadow-md mb-4 mx-auto`}>
                     {feature.icon}
-                  </motion.div>
+                  </div>
+                  
+                  <CardTitle className="text-lg font-semibold text-gray-800 mb-2">
+                    {feature.title}
+                  </CardTitle>
                 </CardHeader>
-                <CardTitle className="mb-2 text-xl font-headline">{feature.title}</CardTitle>
-                <CardDescription className="text-muted-foreground">{feature.description}</CardDescription>
+
+                <CardDescription className="text-gray-600 text-sm">
+                  {feature.description}
+                </CardDescription>
               </Card>
             </motion.div>
           ))}
         </motion.div>
+
+
       </div>
     </section>
   );

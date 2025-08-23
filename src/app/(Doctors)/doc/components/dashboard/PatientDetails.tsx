@@ -6,7 +6,7 @@ interface Patient {
   email: string;
   PhoneNumber: string;
   gender: string;
-  otherDetails: string;
+  address: string;
 }
 
 interface PatientDetailsProps {
@@ -49,7 +49,7 @@ export default function PatientDetails({ status, patient }: PatientDetailsProps)
             </div>
             <div className="flex flex-row gap-4 items-center justify-start">
                 <Stethoscope className="text-blue-600" size={28} />
-                <span className="font-semibold text-gray-700">{patient.otherDetails}</span>
+                <span className="font-semibold text-gray-700">{patient.address}</span>
             </div>
         </div>
       </div>

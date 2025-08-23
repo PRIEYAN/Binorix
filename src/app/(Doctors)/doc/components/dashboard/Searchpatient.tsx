@@ -10,7 +10,7 @@ interface PatientData {
   email: string;
   PhoneNumber: string;
   gender: string;
-  otherDetails: string;
+  address: string;
 }
 
 interface ApiResponse {
@@ -43,7 +43,6 @@ export default function SearchPatient({ onPatientFound, onPatientNotFound }: Sea
     try {
       setLoading(true);
   
-      // Send as JSON object, not plain string
       const response = await axios.post(
         'http://localhost:5050/doctor/prescription/getPatientDetails',
         { PhoneNumber: numberPart },

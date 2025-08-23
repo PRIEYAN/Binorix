@@ -1,6 +1,7 @@
 'use client'
 
 import './globals.css';
+import '../styles/animations.css';
 import { Poppins } from 'next/font/google';
 import { WagmiProvider } from 'wagmi';
 import { ThemeProvider } from '@mui/material/styles';

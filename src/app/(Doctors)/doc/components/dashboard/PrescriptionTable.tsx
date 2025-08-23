@@ -5,7 +5,9 @@ import { useAccount, useSignMessage } from "wagmi";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import axios from "axios";
-import { uploadPrescriptionPDF, GreenfieldCredentials } from "@/lib/greenfieldStorage.simple";
+import { uploadPrescriptionMetadata } from "@/lib/lighthouseStorage";
+import { getLighthouseCredentials } from "@/lib/lighthouseConfig";
+import { web3Service } from "@/lib/web3Service";
 
 const medicinesList = [
   "Paracetamol",
@@ -42,7 +44,7 @@ interface Patient {
   email: string;
   PhoneNumber: string;
   gender: string;
-  otherDetails: string;
+  address: string;
 }
 
 interface PrescriptionTableProps {
@@ -71,7 +73,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
   const { isConnected, address } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
-  // Fetch doctor details on component mount
   useEffect(() => {
     fetchDoctorDetails();
   }, []);
@@ -123,7 +124,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         alert(`Error: ${error.response?.data?.message || error.message}`);
       }
       
-      // Set fallback data
       const fallbackData = {
         name: 'Dr. John Smith',
         registrationNumber: 'MED12345',
@@ -157,7 +157,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         throw new Error('Prescription must be signed before saving');
       }
 
-      // Prepare medicines data
       const medicines = rows[0]?.prescriptions.map(medicine => ({
         name: medicine.name,
         quantity: medicine.quantity,
@@ -174,10 +173,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         throw new Error('At least one medicine is required');
       }
 
-      
       const prescriptionData = {
         doctorWallet: signedAddress,
-        patientWallet: patient.otherDetails || "0x0000000000000000000000000000000000000000", // Use otherDetails as wallet or default
+        patientWallet: patient.address || "0x0000000000000000000000000000000000000000",
         doctorName: doctorDetails.name,
         doctorPhoneNumber: doctorDetails.registrationNumber,
         doctorHospital: doctorDetails.hospital,
@@ -277,25 +275,19 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
   };
 
   const validatePrescription = () => {
-    // Check if patient is registered
     if (!patient) {
       alert("Please search and select a valid patient first.");
       return false;
     }
-
-    // Check if at least one medicine is added
     const hasMedicines = rows.some(row => row.prescriptions.length > 0);
     if (!hasMedicines) {
       alert("Please add at least one medicine to the prescription.");
       return false;
     }
-
-    // Check if wallet is connected
     if (!isConnected || !address) {
       alert("Please connect your wallet first.");
       return false;
     }
-
     return true;
   };
 
@@ -303,22 +295,15 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
     if (!validatePrescription()) {
       return;
     }
-
     try {
-      // Always fetch fresh doctor details before signing
       console.log('Fetching fresh doctor details for signing...');
       await fetchDoctorDetails();
-      
-      // Wait a moment for state to update
       await new Promise(resolve => setTimeout(resolve, 100));
-      
       const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
       const doctorName = doctorDetails?.name || 'Dr. Unknown';
       const message = `Prescription signed by ${doctorName} (Wallet: ${address}) for patient ${patient?.name} (${patient?.PhoneNumber}) at ${timestamp}`;
-
       console.log('Signing message:', message);
       console.log('Current doctor details for signing:', doctorDetails);
-
       await signMessageAsync({ message });
       setSignedAddress(address || "");
       setSignedTimestamp(timestamp);
@@ -329,64 +314,125 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
     }
   };
 
-
   const generatePDF = async () => {
     if (!signedAddress || !signedTimestamp) {
       alert("Please sign the prescription before generating the PDF.");
       return;
     }
-
-    // Final validation before PDF generation
-    if (!validatePrescription()) {
+    if (!validatePrescription() || !doctorDetails) {
+      console.error('Validation failed or doctor details missing.');
+      alert("Please ensure all prescription requirements are met before generating.");
       return;
-    }
-
-    // Ensure we have the latest doctor details
-    console.log('Current doctor details before PDF generation:', doctorDetails);
-    if (!doctorDetails) {
-      console.log('No doctor details found, fetching...');
-      await fetchDoctorDetails();
-      await new Promise(resolve => setTimeout(resolve, 100)); // Wait for state update
     }
     
     const currentDoctorDetails = doctorDetails;
-    console.log('Using doctor details for PDF:', currentDoctorDetails);
-
-    // Get Greenfield credentials - using your provided credentials
-    const greenfieldCredentials: GreenfieldCredentials = {
-      privateKey: '7b5bb4fc46f61fb15fbb9a077e57a8f4820ab827c42ec387068c2b7acef3ccfb',
-      address: '0x2635F0349bad76C98eBF7A7feB9515802D80F7ED',
-      bucketName: 'prescriptions-details'
-    };
-
-    // Check if credentials are available
-    if (!greenfieldCredentials.privateKey || !greenfieldCredentials.address) {
-      console.warn('⚠️ Greenfield credentials not found. PDF will be downloaded locally only.');
-    }
+    let lighthouseResult: any = { success: false, url: '', hash: '', error: '' };
+    let blockchainResult: any = { success: false, prescriptionId: '', transactionHash: '', error: '' };
     
+    try {
+      const lighthouseCredentials = getLighthouseCredentials();
+      
+      console.log('🌐 Preparing to store metadata on Lighthouse/IPFS...');
+      const prescriptionId = `RX${Date.now().toString().slice(-6)}`;
+      
+      const prescriptionMetadata = {
+        prescriptionId,
+        timestamp: new Date().toISOString(),
+        doctor: {
+          name: currentDoctorDetails.name,
+          registrationNumber: currentDoctorDetails.registrationNumber,
+          hospital: currentDoctorDetails.hospital,
+          specialization: currentDoctorDetails.specialization,
+          email: currentDoctorDetails.email,
+          walletAddress: signedAddress
+        },
+        patient: {
+          name: patient?.name,
+          phoneNumber: patient?.PhoneNumber,
+          email: patient?.email,
+          gender: patient?.gender,
+          walletAddress: patient?.address || null
+        },
+        prescription: {
+          medicines: rows.flatMap(row => 
+            row.prescriptions.map(med => ({
+              name: med.name,
+              quantity: med.quantity,
+              timing: med.timing,
+              foodIntake: med.foodIntake,
+              instructions: med.instructions
+            }))
+          ),
+          advice: rows[0]?.advice || '',
+          totalMedicines: rows.reduce((total, row) => total + row.prescriptions.length, 0)
+        },
+        verification: {
+          signed: true,
+          signedAt: signedTimestamp,
+          doctorSignature: signedAddress
+        }
+      };
+      
+      console.log('🚀 Attempting to upload metadata to Lighthouse/IPFS...');
+      lighthouseResult = await uploadPrescriptionMetadata(
+        prescriptionMetadata,
+        prescriptionId,
+        lighthouseCredentials.apiKey
+      );
+      
+      if (lighthouseResult.success) {
+        console.log('✅ Prescription metadata stored to Lighthouse/IPFS successfully!');
+        console.log('IPFS URL:', lighthouseResult.url);
+        console.log('IPFS Hash:', lighthouseResult.hash);
+
+        // Step 2: Store prescription on blockchain with IPFS CID
+        console.log('🔗 Storing prescription on blockchain...');
         try {
-      // First, save the prescription to the database
+          blockchainResult = await web3Service.storePrescriptionOnBlockchain(
+            lighthouseResult.hash, // IPFS CID
+            signedAddress, // Doctor wallet
+            patient?.address || "0x0000000000000000000000000000000000000000" // Patient wallet
+          );
+
+          if (blockchainResult.success) {
+            console.log('✅ Prescription stored on blockchain successfully!');
+            console.log('Blockchain Prescription ID:', blockchainResult.prescriptionId);
+            console.log('Transaction Hash:', blockchainResult.transactionHash);
+            console.log('Block Number:', blockchainResult.blockNumber);
+          } else {
+            console.error('❌ Blockchain storage failed:', blockchainResult.error);
+          }
+        } catch (blockchainError: any) {
+          console.error('❌ Blockchain storage error:', blockchainError);
+          blockchainResult.error = blockchainError.message || 'Blockchain storage failed';
+        }
+      } else {
+        console.error('❌ Lighthouse/IPFS metadata storage failed:', lighthouseResult.error);
+      }
+    } catch (lighthouseError: any) {
+      console.error('❌ Error in Lighthouse/IPFS upload process:', lighthouseError);
+      alert(`Lighthouse storage failed: ${lighthouseError.message}. The PDF will be downloaded locally.`);
+      lighthouseResult.error = "Upload failed unexpectedly.";
+    }
+
+    try {
       console.log('💾 Attempting to save prescription to database...');
       try {
         await savePrescriptionToDatabase();
         console.log('✅ Prescription saved to database successfully');
-      } catch (dbError: any) {
+      } catch (dbError) {
         console.error('⚠️ Database save failed, continuing with PDF generation:', dbError);
-        // Continue with PDF generation even if database save fails
       }
       
-      // Then generate the PDF
       console.log('📄 Starting PDF generation...');
-    const pdf = new jsPDF("p", "mm", "a4");
+      const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      // Header Section
       pdf.setFontSize(20);
       pdf.setFont("helvetica", "bold");
       pdf.text("MEDICAL PRESCRIPTION", pageWidth / 2, 25, { align: "center" });
       
-      // Hospital/Clinic Information
       pdf.setFontSize(14);
       pdf.setFont("helvetica", "bold");
       pdf.text(currentDoctorDetails?.hospital || "Binorix Medical Center", pageWidth / 2, 40, { align: "center" });
@@ -396,11 +442,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.text("123 Healthcare Avenue, Medical District", pageWidth / 2, 48, { align: "center" });
       pdf.text(`Phone: +91-9876543210 | Email: ${currentDoctorDetails?.email || 'contact@binorix.com'}`, pageWidth / 2, 54, { align: "center" });
       
-      // Horizontal line
       pdf.setLineWidth(0.5);
       pdf.line(15, 60, pageWidth - 15, 60);
       
-      // Doctor Information
       pdf.setFontSize(12);
       pdf.setFont("helvetica", "bold");
       pdf.text("Doctor Information:", 15, 75);
@@ -411,7 +455,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.text(`NMR Registration No: ${currentDoctorDetails?.registrationNumber || 'MED12345'}`, 15, 99);
       pdf.text(`Hospital: ${currentDoctorDetails?.hospital || 'Binorix Medical Center'}`, 15, 106);
       
-      // Patient Information
       pdf.setFont("helvetica", "bold");
       pdf.text("Patient Information:", 15, 125);
       
@@ -419,30 +462,25 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.text(`Name: ${patient?.name || 'N/A'}`, 15, 135);
       pdf.text(`Phone: ${patient?.PhoneNumber || 'N/A'}`, 15, 142);
       pdf.text(`Gender: ${patient?.gender || 'N/A'}`, 15, 149);
+      pdf.text(`Wallet: ${patient?.address || 'Not provided'}`, 15, 156);
       
-      // Date and Prescription ID
       pdf.text(`Date: ${new Date(signedTimestamp || '').toLocaleDateString()}`, pageWidth - 60, 135);
       pdf.text(`Prescription ID: RX${Date.now().toString().slice(-6)}`, pageWidth - 60, 142);
       
-      // Medicines Section
       pdf.setFont("helvetica", "bold");
-      pdf.text("Rx (Prescription):", 15, 165);
+      pdf.text("Rx (Prescription):", 15, 172);
       
-      let yPosition = 180;
+      let yPosition = 187;
       const medicines = rows[0]?.prescriptions || [];
-      const pageMargin = 20; // Bottom margin before new page
-      const maxY = pageHeight - pageMargin; // Maximum Y position before new page
+      const pageMargin = 20;
+      const maxY = pageHeight - pageMargin;
       
       medicines.forEach((medicine, index) => {
-        // Check if we need a new page before adding medicine
-        const medicineHeight = 35; // Estimated height needed for one medicine entry
-        
+        const medicineHeight = 35; 
         if (yPosition + medicineHeight > maxY) {
-          // Add new page
           pdf.addPage();
-          yPosition = 30; // Start position on new page
+          yPosition = 30; 
           
-          // Add header on new page
           pdf.setFontSize(16);
           pdf.setFont("helvetica", "bold");
           pdf.text("MEDICAL PRESCRIPTION (Continued)", pageWidth / 2, 20, { align: "center" });
@@ -453,21 +491,17 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
           yPosition += 15;
         }
         
-        // Medicine name with serial number
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(12);
         pdf.text(`${index + 1}. ${medicine.name}`, 20, yPosition);
         
-        // Medicine details
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(10);
         yPosition += 8;
         
-        // Quantity
         pdf.text(`   Quantity: ${medicine.quantity} tablets/capsules`, 25, yPosition);
         yPosition += 6;
         
-        // Timing
         const timings = [];
         if (medicine.timing.morning) timings.push('Morning');
         if (medicine.timing.afternoon) timings.push('Afternoon');
@@ -476,45 +510,37 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         pdf.text(`   Timing: ${timings.join(', ') || 'As directed'}`, 25, yPosition);
         yPosition += 6;
         
-        // Food intake
         pdf.text(`   Food: ${medicine.foodIntake}`, 25, yPosition);
         yPosition += 6;
         
-        // Instructions (if available)
         if (medicine.instructions && medicine.instructions.trim()) {
           const instructionLines = pdf.splitTextToSize(`   Instructions: ${medicine.instructions}`, pageWidth - 50);
           pdf.text(instructionLines, 25, yPosition);
           yPosition += instructionLines.length * 5;
         } else {
-          // Default instruction based on food intake
           pdf.text(`   Instructions: Take ${medicine.foodIntake.toLowerCase()}`, 25, yPosition);
           yPosition += 6;
         }
         yPosition += 12;
         
-        // Add spacing between medicines
         if (index < medicines.length - 1) {
           yPosition += 5;
         }
       });
       
-      // Doctor's Advice
       if (rows[0]?.advice) {
-        const adviceHeight = 40; // Estimated height for advice section
-        
-        // Check if we need a new page for advice
+        const adviceHeight = 40; 
         if (yPosition + adviceHeight > maxY) {
           pdf.addPage();
           yPosition = 30;
           
-          // Add header on new page
           pdf.setFontSize(16);
           pdf.setFont("helvetica", "bold");
           pdf.text("MEDICAL PRESCRIPTION (Continued)", pageWidth / 2, 20, { align: "center" });
           yPosition += 20;
         }
         
-    pdf.setFontSize(12);
+        pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
         pdf.text("Doctor's Advice:", 15, yPosition + 10);
         
@@ -525,16 +551,13 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         yPosition += 20 + (adviceLines.length * 5);
       }
       
-      // Digital Signature Section
-      const signatureHeight = 60; // Estimated height for signature section
+      const signatureHeight = 60; 
       let signatureY = yPosition + 30;
       
-      // Check if we need a new page for signature
       if (signatureY + signatureHeight > maxY) {
         pdf.addPage();
         signatureY = 30;
         
-        // Add header on new page
         pdf.setFontSize(16);
         pdf.setFont("helvetica", "bold");
         pdf.text("MEDICAL PRESCRIPTION (Continued)", pageWidth / 2, 20, { align: "center" });
@@ -554,19 +577,16 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.text(`Timestamp: ${signedTimestamp}`, 15, signatureY + 24);
       pdf.text(`Patient Phone: ${patient?.PhoneNumber}`, 15, signatureY + 31);
       
-      // Verification note
       pdf.setFont("helvetica", "italic");
       pdf.setFontSize(8);
       pdf.text("This prescription is digitally signed and verified on blockchain.", 15, signatureY + 42);
       pdf.text(`Valid only with proper verification through ${currentDoctorDetails?.hospital || 'Binorix Medical Center'}.`, 15, signatureY + 48);
       
-      // Footer
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
       pdf.text("This is a computer-generated prescription and does not require a physical signature.", 
                pageWidth / 2, pageHeight - 15, { align: "center" });
       
-      // Add page numbers to all pages
       const totalPages = (pdf as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
@@ -574,58 +594,40 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         pdf.setFont("helvetica", "normal");
         pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 30, pageHeight - 10, { align: "center" });
         
-        // Add patient name and prescription ID on each page footer
         pdf.text(`Patient: ${patient?.name} | Prescription ID: RX${Date.now().toString().slice(-6)}`, 
                  15, pageHeight - 10);
       }
 
-      // Generate filename with patient info and timestamp
       const fileName = `Prescription_${patient?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}_${Date.now().toString().slice(-6)}.pdf`;
       
-      // Save PDF locally
       pdf.save(fileName);
 
-      // Upload to BNB Greenfield if credentials are available
-      let greenfieldResult = null;
-      if (greenfieldCredentials.privateKey && greenfieldCredentials.address) {
-        try {
-          console.log('🌐 Uploading PDF to BNB Greenfield...');
-          const prescriptionId = `RX${Date.now().toString().slice(-6)}`;
-          
-          greenfieldResult = await uploadPrescriptionPDF(
-            pdf,
-            patient?.name || 'Unknown Patient',
-            prescriptionId,
-            greenfieldCredentials
-          );
-
-          if (greenfieldResult.success) {
-            console.log('✅ PDF uploaded to Greenfield successfully!');
-            console.log('Greenfield URL:', greenfieldResult.url);
-            console.log('Transaction Hash:', greenfieldResult.txHash);
-          } else {
-            console.error('❌ Greenfield upload failed:', greenfieldResult.error);
-          }
-        } catch (greenfieldError) {
-          console.error('❌ Error uploading to Greenfield:', greenfieldError);
-        }
-      }
-
-      // Clear the form and reset everything
       setRows([{ phone: "", prescriptions: [], searchTerm: "", advice: "" }]);
       setSignedAddress(null);
       setSignedTimestamp(null);
       
-      // Call the parent callback to reset patient data
       onPrescriptionComplete();
 
-      // Show success message with Greenfield status
-      let successMessage = "✅ Prescription saved to database and multi-page PDF generated successfully!";
-      if (greenfieldResult?.success) {
-        successMessage += "\n🌐 PDF also uploaded to BNB Greenfield blockchain storage!";
-      } else if (greenfieldCredentials.privateKey && greenfieldCredentials.address) {
-        successMessage += "\n⚠️ Local PDF generated, but Greenfield upload failed.";
+      let successMessage = "✅ Prescription saved to database and PDF generated successfully!";
+      
+      if (lighthouseResult.success) {
+        successMessage += "\n🌐 Prescription metadata stored on Lighthouse/IPFS!";
+        successMessage += `\n📄 IPFS Hash: ${lighthouseResult.hash}`;
+        
+        if (blockchainResult.success) {
+          successMessage += "\n🔗 Prescription recorded on blockchain!";
+          successMessage += `\n🆔 Blockchain Prescription ID: ${blockchainResult.prescriptionId?.slice(0, 10)}...`;
+          successMessage += `\n📋 Transaction: ${blockchainResult.transactionHash?.slice(0, 10)}...`;
+        } else {
+          successMessage += "\n⚠️ IPFS storage successful, but blockchain recording failed.";
+          if (blockchainResult.error) {
+            successMessage += `\n❌ Blockchain Error: ${blockchainResult.error}`;
+          }
+        }
+      } else {
+        successMessage += "\n⚠️ PDF generated locally, but IPFS storage failed.";
       }
+      
       successMessage += "\nThe form has been cleared. Please sign in again for the next prescription.";
       
       alert(successMessage);
@@ -649,7 +651,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
   return (
     <div className="mt-8">
-      {/* Table Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Prescription Details</h2>
         <p className="text-gray-600">Add medicines and create prescription for the patient</p>
@@ -657,7 +658,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
       
 
-      {/* Validation Status */}
       <div className="mb-6 bg-white p-4 rounded-xl shadow-md border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Prescription Requirements</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -731,7 +731,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
               return (
                 <React.Fragment key={rowIndex}>
-                  {/* Search & Advice Row */}
                   <tr className="bg-blue-50 border-b border-blue-100">
                     <td className="py-4 px-6 align-top relative">
                       <div className="relative">
@@ -808,7 +807,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
                     </td>
                   </tr>
 
-                  {/* Medicine Rows */}
                   {row.prescriptions.map((med, medIndex) => (
                     <tr
                       key={medIndex}
@@ -912,7 +910,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
           </tbody>
         </table>
         
-        {/* Empty State */}
         {rows[0].prescriptions.length === 0 && (
           <div className="text-center py-12 px-6">
             <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
@@ -924,7 +921,6 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
         )}
       </div>
       
-      {/* Status indicators */}
       {signedAddress && signedTimestamp && (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center">
