@@ -65,7 +65,7 @@ contract PrescriptionRecords {
                 patientWallet,
                 block.timestamp,
                 prescriptionCounter,
-                block.prevrandao,
+                block.difficulty,
                 ipfsCid
             )
         );
