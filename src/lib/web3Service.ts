@@ -149,6 +149,9 @@ class Web3Service {
       // Request wallet connection
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       
+      // Check and switch to BSC Testnet if needed
+      await this.ensureBSCTestnet();
+      
       // Create Web3 provider from MetaMask
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -178,6 +181,59 @@ class Web3Service {
       console.error('❌ Failed to initialize Web3 with wallet:', error.message);
       console.error('Full error:', error);
       return false;
+    }
+  }
+
+  /**
+   * Ensure user is connected to BSC Testnet
+   */
+  private async ensureBSCTestnet(): Promise<void> {
+    try {
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      const bscTestnetChainId = '0x61'; // 97 in hex
+      
+      console.log('Current chain ID:', chainId);
+      console.log('Required chain ID:', bscTestnetChainId);
+      
+      if (chainId !== bscTestnetChainId) {
+        console.log('🔄 Switching to BSC Testnet...');
+        
+        try {
+          // Try to switch to BSC Testnet
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: bscTestnetChainId }],
+          });
+        } catch (switchError: any) {
+          // If BSC Testnet is not added, add it
+          if (switchError.code === 4902) {
+            console.log('📡 Adding BSC Testnet to MetaMask...');
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: bscTestnetChainId,
+                chainName: 'BSC Testnet',
+                nativeCurrency: {
+                  name: 'BNB',
+                  symbol: 'BNB',
+                  decimals: 18,
+                },
+                rpcUrls: ['https://bsc-testnet.publicnode.com'],
+                blockExplorerUrls: ['https://testnet.bscscan.com'],
+              }],
+            });
+          } else {
+            throw switchError;
+          }
+        }
+        
+        console.log('✅ Successfully switched to BSC Testnet');
+      } else {
+        console.log('✅ Already on BSC Testnet');
+      }
+    } catch (error) {
+      console.error('❌ Failed to ensure BSC Testnet:', error);
+      throw new Error('Please manually switch to BSC Testnet in MetaMask');
     }
   }
 
