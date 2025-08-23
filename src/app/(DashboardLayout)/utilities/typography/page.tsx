@@ -358,7 +358,7 @@ export default function TypographyPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="ragavi@preiyan.com"
+                    placeholder="abc@mail.com"
                     value={formData.email}
                     onChange={handleInputChange}
                     className={validationErrors.email ? "border-red-500" : ""}

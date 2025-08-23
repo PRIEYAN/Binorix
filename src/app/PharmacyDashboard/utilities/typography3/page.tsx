@@ -60,7 +60,7 @@ export default function TypographyPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="ragavi@preiyan.com"
+                placeholder="abc@mail.com"
                 required
               />
               <Label htmlFor="reg-year" className="pt-2 pb-2">Enter Doctor Specialization Areas</Label>

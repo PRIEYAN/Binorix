@@ -102,7 +102,7 @@ export default function Doctor() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="ragavi@preiyan.com"
+                    placeholder="abc@mail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

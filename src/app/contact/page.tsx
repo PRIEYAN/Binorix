@@ -50,7 +50,7 @@ export default function ContactPage() {
             />
             <input
               type="email"
-              placeholder="Email"
+              placeholder="abc@mail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border border-purple-300 rounded-md px-4 py-2 outline-none focus:ring-2 focus:ring-purple-500"

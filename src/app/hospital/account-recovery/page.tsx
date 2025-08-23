@@ -78,7 +78,7 @@ export default function AccountRecovery() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="ragavi@preiyan.com"
+                  placeholder="abc@mail.com"
                   value={email}
                   onChange={handleEmailChange}
                   required
