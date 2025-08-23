@@ -11,6 +11,7 @@ import {
   optimism,
   arbitrum,
   base,
+  bscTestnet,
 } from 'wagmi/chains';
 import {
   QueryClientProvider,
@@ -20,9 +21,9 @@ import {
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const config = getDefaultConfig({
-  appName: 'My RainbowKit App',
+  appName: 'Binorix Medical DApp',
   projectId: '322a547413a527fe6601236be62479a4',
-  chains: [avalanche, mainnet, polygon, optimism, arbitrum, base],
+  chains: [bscTestnet, mainnet, polygon, optimism, arbitrum, base],
   ssr: true, 
 });
 
