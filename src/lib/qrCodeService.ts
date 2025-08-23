@@ -35,7 +35,10 @@ class QRCodeService {
       // Get prescription details from blockchain and IPFS
       const prescriptionDetails = await web3Service.getPrescriptionForQR(prescriptionId);
 
-      // Create QR code data structure
+      // Create direct verification URL for QR code (more user-friendly)
+      const verificationUrl = `${window.location.origin}/verify/${prescriptionId}?doctor=${prescriptionDetails.blockchainData.doctorWallet}&patient=${prescriptionDetails.blockchainData.patientWallet}&ipfs=${prescriptionDetails.blockchainData.ipfsCid}`;
+      
+      // Store detailed data for component use
       const qrData: QRCodeData = {
         prescriptionId: prescriptionDetails.blockchainData.prescriptionId,
         doctorWallet: prescriptionDetails.blockchainData.doctorWallet,
@@ -44,11 +47,11 @@ class QRCodeService {
         contractAddress: prescriptionDetails.verificationInfo.contractAddress,
         network: prescriptionDetails.verificationInfo.network,
         timestamp: prescriptionDetails.blockchainData.timestamp,
-        verificationUrl: `${window.location.origin}/verify/${prescriptionId}`
+        verificationUrl: verificationUrl
       };
 
-      // Convert to JSON string for QR code
-      const qrCodeContent = JSON.stringify(qrData, null, 2);
+      // Use direct URL for QR code (scanners will show this as clickable link)
+      const qrCodeContent = verificationUrl;
 
       console.log('📱 QR Code Content:', qrCodeContent);
 
@@ -84,6 +87,8 @@ class QRCodeService {
         qrCodeDataUrl: format === 'dataURL' ? qrCodeResult : undefined,
         qrCodeSvg: format === 'svg' ? qrCodeResult : undefined,
         prescriptionData: prescriptionDetails,
+        qrCodeContent: qrCodeContent, // The actual content encoded in QR
+        detailedData: qrData, // Full structured data
       };
 
     } catch (error: any) {
@@ -91,6 +96,86 @@ class QRCodeService {
       return {
         success: false,
         error: error.message || 'Failed to generate QR code'
+      };
+    }
+  }
+
+  /**
+   * Generate QR code with detailed JSON data (for technical verification)
+   */
+  async generateDetailedPrescriptionQR(
+    prescriptionId: string,
+    format: 'dataURL' | 'svg' = 'dataURL'
+  ): Promise<QRCodeResult> {
+    try {
+      console.log('🔍 Generating detailed JSON QR code for prescription:', prescriptionId);
+
+      // Get prescription details from blockchain and IPFS
+      const prescriptionDetails = await web3Service.getPrescriptionForQR(prescriptionId);
+
+      // Create detailed QR code data structure
+      const qrData = {
+        type: 'BINORIX_PRESCRIPTION',
+        version: '1.0',
+        prescriptionId: prescriptionDetails.blockchainData.prescriptionId,
+        doctorWallet: prescriptionDetails.blockchainData.doctorWallet,
+        patientWallet: prescriptionDetails.blockchainData.patientWallet,
+        ipfsCid: prescriptionDetails.blockchainData.ipfsCid,
+        contractAddress: prescriptionDetails.verificationInfo.contractAddress,
+        network: prescriptionDetails.verificationInfo.network,
+        chainId: prescriptionDetails.verificationInfo.chainId,
+        timestamp: prescriptionDetails.blockchainData.timestamp,
+        verificationUrl: `${window.location.origin}/verify/${prescriptionId}`,
+        explorerUrl: prescriptionDetails.verificationInfo.explorerUrl,
+        ipfsGateway: prescriptionDetails.verificationInfo.ipfsGateway
+      };
+
+      // Convert to JSON string for QR code
+      const qrCodeContent = JSON.stringify(qrData, null, 2);
+
+      console.log('📱 Detailed QR Code Content:', qrCodeContent);
+
+      let qrCodeResult: string;
+
+      if (format === 'svg') {
+        qrCodeResult = await QRCode.toString(qrCodeContent, {
+          type: 'svg',
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#7c3aed', // Purple for detailed QR
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'H'
+        });
+      } else {
+        qrCodeResult = await QRCode.toDataURL(qrCodeContent, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#7c3aed', // Purple for detailed QR
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'H'
+        });
+      }
+
+      console.log('✅ Detailed QR Code generated successfully');
+
+      return {
+        success: true,
+        qrCodeDataUrl: format === 'dataURL' ? qrCodeResult : undefined,
+        qrCodeSvg: format === 'svg' ? qrCodeResult : undefined,
+        prescriptionData: prescriptionDetails,
+        qrCodeContent: qrCodeContent,
+        detailedData: qrData,
+      };
+
+    } catch (error: any) {
+      console.error('❌ Failed to generate detailed QR code:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to generate detailed QR code'
       };
     }
   }

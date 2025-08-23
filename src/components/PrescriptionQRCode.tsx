@@ -20,6 +20,7 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showPrescriptionDetails, setShowPrescriptionDetails] = useState(false);
+  const [qrType, setQrType] = useState<'url' | 'json'>('url');
 
   const sizeClasses = {
     small: 'w-32 h-32',
@@ -31,7 +32,7 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
     if (prescriptionId) {
       generateQRCode();
     }
-  }, [prescriptionId]);
+  }, [prescriptionId, qrType]);
 
   const generateQRCode = async () => {
     setLoading(true);
@@ -40,7 +41,9 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
     try {
       console.log('🔍 Generating QR code for prescription:', prescriptionId);
       
-      const result = await qrCodeService.generatePrescriptionQR(prescriptionId, 'dataURL');
+      const result = qrType === 'url' 
+        ? await qrCodeService.generatePrescriptionQR(prescriptionId, 'dataURL')
+        : await qrCodeService.generateDetailedPrescriptionQR(prescriptionId, 'dataURL');
       
       if (result.success) {
         setQrCodeData(result);
@@ -119,8 +122,12 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
           <h3 className="text-lg font-semibold text-gray-800">Prescription QR Code</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-            Blockchain Verified
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+            qrType === 'url' 
+              ? 'bg-blue-100 text-blue-700' 
+              : 'bg-purple-100 text-purple-700'
+          }`}>
+            {qrType === 'url' ? 'Clickable Link' : 'Technical Data'}
           </span>
         </div>
       </div>
@@ -139,7 +146,10 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
         
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600 mb-2">
-            Scan to verify prescription on blockchain
+            {qrType === 'url' 
+              ? 'Scan to open verification page' 
+              : 'Scan to get technical prescription data'
+            }
           </p>
           <p className="text-xs text-gray-500 font-mono">
             ID: {prescriptionId.slice(0, 8)}...{prescriptionId.slice(-8)}
@@ -147,11 +157,41 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
         </div>
       </div>
 
+      {/* QR Type Toggle */}
+      <div className="flex justify-center mb-4">
+        <div className="bg-gray-100 rounded-lg p-1 flex">
+          <button
+            onClick={() => setQrType('url')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              qrType === 'url'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            🔗 Link QR
+          </button>
+          <button
+            onClick={() => setQrType('json')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              qrType === 'json'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            📋 Data QR
+          </button>
+        </div>
+      </div>
+
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3 justify-center mb-6">
         <button
           onClick={downloadQRCode}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors ${
+            qrType === 'url' 
+              ? 'bg-blue-600 hover:bg-blue-700' 
+              : 'bg-purple-600 hover:bg-purple-700'
+          }`}
         >
           <Download size={16} />
           Download QR
@@ -239,15 +279,54 @@ const PrescriptionQRCode: React.FC<PrescriptionQRCodeProps> = ({
         </div>
       )}
 
+      {/* QR Code Content Info */}
+      <div className={`rounded-lg p-4 mt-4 ${
+        qrType === 'url' ? 'bg-blue-50' : 'bg-purple-50'
+      }`}>
+        <h4 className={`font-semibold mb-2 ${
+          qrType === 'url' ? 'text-blue-800' : 'text-purple-800'
+        }`}>
+          {qrType === 'url' ? '🔗 Link QR Contains:' : '📋 Data QR Contains:'}
+        </h4>
+        
+        {qrType === 'url' ? (
+          <div className="text-sm text-blue-700 space-y-1">
+            <p className="font-medium">Direct verification URL:</p>
+            <p className="font-mono text-xs bg-white p-2 rounded border break-all">
+              {qrCodeData?.qrCodeContent || 'Generating...'}
+            </p>
+            <ul className="mt-2 space-y-1">
+              <li>• Opens verification page in browser</li>
+              <li>• Shows prescription details</li>
+              <li>• Links to blockchain & IPFS</li>
+              <li>• Mobile-friendly interface</li>
+            </ul>
+          </div>
+        ) : (
+          <ul className="text-sm text-purple-700 space-y-1">
+            <li>• Complete prescription metadata</li>
+            <li>• Doctor & patient wallet addresses</li>
+            <li>• Blockchain contract address</li>
+            <li>• IPFS hash for prescription data</li>
+            <li>• Timestamp & verification links</li>
+            <li>• Technical verification data</li>
+          </ul>
+        )}
+      </div>
+
       {/* Verification Instructions */}
-      <div className="bg-blue-50 rounded-lg p-4 mt-4">
-        <h4 className="font-semibold text-blue-800 mb-2">🔍 How to Verify</h4>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Scan QR code with any QR reader</li>
-          <li>• Check doctor and patient wallet addresses</li>
-          <li>• Verify on BSC Testnet blockchain</li>
-          <li>• Access prescription metadata on IPFS</li>
-        </ul>
+      <div className="bg-gray-50 rounded-lg p-4 mt-4">
+        <h4 className="font-semibold text-gray-800 mb-2">🔍 How to Use</h4>
+        <div className="text-sm text-gray-700 space-y-2">
+          <div>
+            <span className="font-medium text-blue-600">🔗 Link QR:</span>
+            <span className="ml-2">Best for patients & pharmacies - opens verification page</span>
+          </div>
+          <div>
+            <span className="font-medium text-purple-600">📋 Data QR:</span>
+            <span className="ml-2">Best for technical verification & integration</span>
+          </div>
+        </div>
       </div>
     </div>
   );
