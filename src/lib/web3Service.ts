@@ -106,8 +106,14 @@ class Web3Service {
       const contractAddress = process.env.NEXT_PUBLIC_PRESCRIPTION_CONTRACT_ADDRESS;
       const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://bsc-testnet.publicnode.com';
       
+      console.log('🔍 Environment Variables Check:');
+      console.log('CONTRACT_ADDRESS:', contractAddress);
+      console.log('RPC_URL:', rpcUrl);
+      console.log('All NEXT_PUBLIC env vars:', Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')));
+      
       if (!contractAddress) {
         console.warn('⚠️ Contract address not configured in environment variables');
+        console.warn('Available env vars:', Object.keys(process.env).slice(0, 10));
         return;
       }
 
@@ -128,10 +134,18 @@ class Web3Service {
    */
   async initializeWithWallet(): Promise<boolean> {
     try {
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new Error('MetaMask not detected');
+      console.log('🔗 Starting wallet initialization...');
+      
+      if (typeof window === 'undefined') {
+        throw new Error('Running on server side - window not available');
+      }
+      
+      if (!window.ethereum) {
+        throw new Error('MetaMask not detected. Please install MetaMask extension.');
       }
 
+      console.log('🦊 MetaMask detected, requesting account access...');
+      
       // Request wallet connection
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       
@@ -140,8 +154,10 @@ class Web3Service {
       const signer = await provider.getSigner();
       
       const contractAddress = process.env.NEXT_PUBLIC_PRESCRIPTION_CONTRACT_ADDRESS;
+      console.log('🔍 Contract address from env:', contractAddress);
+      
       if (!contractAddress) {
-        throw new Error('Contract address not configured');
+        throw new Error('Contract address not configured in environment variables');
       }
 
       // Initialize contract with signer
@@ -149,12 +165,18 @@ class Web3Service {
       this.provider = provider;
       this.signer = signer;
 
+      const signerAddress = await signer.getAddress();
+      const network = await provider.getNetwork();
+      
       console.log('✅ Web3 service initialized with wallet');
-      console.log('Signer address:', await signer.getAddress());
+      console.log('Signer address:', signerAddress);
+      console.log('Network:', network.name, 'Chain ID:', network.chainId);
+      console.log('Contract address:', contractAddress);
       
       return true;
     } catch (error: any) {
-      console.error('❌ Failed to initialize Web3 with wallet:', error);
+      console.error('❌ Failed to initialize Web3 with wallet:', error.message);
+      console.error('Full error:', error);
       return false;
     }
   }

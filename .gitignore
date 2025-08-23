@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules/~
+node_modules/
 /.pnp
 .pnp.js
 
@@ -21,7 +21,7 @@ node_modules/~
 
 # debug
 npm-debug.log*
-yarn-debug.log*~
+yarn-debug.log*
 yarn-error.log*
 
 # local env files
@@ -34,4 +34,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-node_modules
+
+# Blockchain specific
+src/blockchain/node_modules/
+src/blockchain/.env
+src/blockchain/cache/
+src/blockchain/artifacts/
+src/blockchain/typechain-types/
+
+# Hardhat files
+coverage/
+coverage.json
+typechain/
+typechain-types/
+
+# Logs
+*.log
