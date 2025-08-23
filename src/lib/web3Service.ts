@@ -382,6 +382,62 @@ class Web3Service {
       return 0;
     }
   }
+
+  /**
+   * Get complete prescription details for QR code generation
+   */
+  async getPrescriptionForQR(prescriptionId: string): Promise<any> {
+    try {
+      console.log('🔍 Fetching prescription details for QR code:', prescriptionId);
+      
+      if (!this.contract) {
+        await this.initializeWithWallet();
+      }
+
+      // Get prescription from blockchain
+      const result = await this.contract!.getPrescription(prescriptionId);
+      
+      if (!result.isActive) {
+        throw new Error('Prescription not found or inactive');
+      }
+
+      // Fetch IPFS metadata
+      const ipfsUrl = `https://gateway.lighthouse.storage/ipfs/${result.ipfsCid}`;
+      console.log('📄 Fetching IPFS metadata from:', ipfsUrl);
+      
+      const response = await fetch(ipfsUrl);
+      const metadata = await response.json();
+
+      // Combine blockchain and IPFS data
+      const prescriptionDetails = {
+        blockchainData: {
+          prescriptionId: prescriptionId,
+          doctorWallet: result.doctorWallet,
+          patientWallet: result.patientWallet,
+          ipfsCid: result.ipfsCid,
+          timestamp: Number(result.timestamp),
+          isActive: result.isActive,
+          blockchainVerified: true
+        },
+        prescriptionMetadata: metadata,
+        verificationInfo: {
+          contractAddress: CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS,
+          network: 'BSC Testnet',
+          chainId: 97,
+          explorerUrl: `https://testnet.bscscan.com/address/${CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS}`,
+          ipfsGateway: ipfsUrl
+        },
+        generatedAt: new Date().toISOString()
+      };
+
+      console.log('✅ Prescription details retrieved for QR code');
+      return prescriptionDetails;
+
+    } catch (error: any) {
+      console.error('❌ Failed to get prescription for QR:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

@@ -8,6 +8,7 @@ import axios from "axios";
 import { uploadPrescriptionMetadata } from "@/lib/lighthouseStorage";
 import { getLighthouseCredentials } from "@/lib/lighthouseConfig";
 import { web3Service } from "@/lib/web3Service";
+import PrescriptionQRCode from "@/components/PrescriptionQRCode";
 
 const medicinesList = [
   "Paracetamol",
@@ -68,6 +69,8 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
   const [signedAddress, setSignedAddress] = useState<string | null>(null);
   const [signedTimestamp, setSignedTimestamp] = useState<string | null>(null);
   const [doctorDetails, setDoctorDetails] = useState<DoctorDetails | null>(null);
+  const [blockchainPrescriptionId, setBlockchainPrescriptionId] = useState<string | null>(null);
+  const [showQRCode, setShowQRCode] = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
   const { isConnected, address } = useAccount();
@@ -399,6 +402,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
             console.log('Blockchain Prescription ID:', blockchainResult.prescriptionId);
             console.log('Transaction Hash:', blockchainResult.transactionHash);
             console.log('Block Number:', blockchainResult.blockNumber);
+            
+            // Store prescription ID for QR code generation
+            setBlockchainPrescriptionId(blockchainResult.prescriptionId);
           } else {
             console.error('❌ Blockchain storage failed:', blockchainResult.error);
           }
@@ -605,6 +611,11 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       setRows([{ phone: "", prescriptions: [], searchTerm: "", advice: "" }]);
       setSignedAddress(null);
       setSignedTimestamp(null);
+      
+      // Show QR code if blockchain storage was successful
+      if (blockchainResult.success) {
+        setShowQRCode(true);
+      }
       
       onPrescriptionComplete();
 
@@ -930,6 +941,45 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
           <p className="text-sm text-green-700 mt-1">
             Signed by: {signedAddress.slice(0, 6)}...{signedAddress.slice(-4)} at {signedTimestamp}
           </p>
+        </div>
+      )}
+
+      {/* QR Code Display */}
+      {showQRCode && blockchainPrescriptionId && (
+        <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border border-blue-200">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-blue-800">
+              📱 Prescription QR Code
+            </h2>
+            <button
+              onClick={() => setShowQRCode(false)}
+              className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-lg p-4 shadow-md">
+            <PrescriptionQRCode
+              prescriptionId={blockchainPrescriptionId}
+              showDetails={true}
+              size="medium"
+              onQRGenerated={(qrData) => {
+                console.log('QR Code generated:', qrData);
+              }}
+            />
+          </div>
+          
+          <div className="mt-4 p-4 bg-blue-100 rounded-lg">
+            <h3 className="font-semibold text-blue-800 mb-2">🔍 QR Code Contains:</h3>
+            <ul className="text-blue-700 text-sm space-y-1">
+              <li>• Doctor Wallet Address: {signedAddress?.slice(0, 8)}...{signedAddress?.slice(-6)}</li>
+              <li>• Patient Wallet Address: {patient?.address?.slice(0, 8)}...{patient?.address?.slice(-6)}</li>
+              <li>• Blockchain Prescription ID</li>
+              <li>• IPFS Metadata Hash</li>
+              <li>• Verification URL</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>
