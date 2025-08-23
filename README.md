@@ -216,7 +216,6 @@ For any inquiries or support, feel free to reach out:
 **Madhanraj M** - [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/madhan-fullstack-developer/)  
 **Prieyan M N** - [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/prieyanmn2007/)
   <br/>
-**Madesh Vaithya H** - [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/madesh-vaithya-app-developer/)
 
 ---
 
