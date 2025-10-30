@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { switchToBSCTestnet, CONTRACT_ADDRESSES } from './bscConfig';
+import { switchToQIEChain, CONTRACT_ADDRESSES } from './qieConfig';
 
 // Smart Contract ABI for PrescriptionRecords
 const PRESCRIPTION_CONTRACT_ABI = [
@@ -105,7 +105,7 @@ class Web3Service {
     try {
       // Initialize with environment variables
       const contractAddress = CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS;
-      const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://bsc-testnet.publicnode.com';
+      const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.qiechain.com';
       
       console.log('🔍 Environment Variables Check:');
       console.log('CONTRACT_ADDRESS:', contractAddress);
@@ -151,7 +151,7 @@ class Web3Service {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       
       // Check and switch to BSC Testnet if needed
-      await switchToBSCTestnet();
+      await switchToQIEChain();
       
       // Create Web3 provider from MetaMask
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -422,9 +422,9 @@ class Web3Service {
         prescriptionMetadata: metadata,
         verificationInfo: {
           contractAddress: CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS,
-          network: 'BSC Testnet',
-          chainId: 97,
-          explorerUrl: `https://testnet.bscscan.com/address/${CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS}`,
+          network: 'QIE Chain Mainnet',
+          chainId: 8888,
+          explorerUrl: `https://scan.qiechain.com/address/${CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS}`,
           ipfsGateway: ipfsUrl
         },
         generatedAt: new Date().toISOString()
