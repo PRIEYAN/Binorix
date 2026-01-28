@@ -82,6 +82,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
   const fetchDoctorDetails = async () => {
     try {
+      if (typeof window === 'undefined') {
+        throw new Error('Window is not available');
+      }
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No authentication token found');
@@ -103,9 +106,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
           const doctorInfo = {
             name: doctor.name || 'Dr. Unknown',
             registrationNumber: doctor.nmrNumber || doctor.registrationNumber || 'REG123456',
-            hospital: doctor.hospital || doctor.hospitalName || 'Binorix Medical Center',
+            hospital: doctor.hospital || doctor.hospitalName || 'Zypher Medical Center',
             specialization: doctor.specialization || 'General Medicine',
-            email: doctor.email || 'doctor@binorix.com'
+            email: doctor.email || 'doctor@Zypher.com'
           };
           
           setDoctorDetails(doctorInfo);
@@ -130,9 +133,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       const fallbackData = {
         name: 'Dr. John Smith',
         registrationNumber: 'MED12345',
-        hospital: 'Binorix Medical Center',
+        hospital: 'Zypher Medical Center',
         specialization: 'General Medicine',
-        email: 'doctor@binorix.com'
+        email: 'doctor@Zypher.com'
       };
       
       setDoctorDetails(fallbackData);
@@ -142,6 +145,9 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
 
   const savePrescriptionToDatabase = async () => {
     try {
+      if (typeof window === 'undefined') {
+        throw new Error('Window is not available');
+      }
       const token = localStorage.getItem('token');
       
       if (!token) {
@@ -441,12 +447,12 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       
       pdf.setFontSize(14);
       pdf.setFont("helvetica", "bold");
-      pdf.text(currentDoctorDetails?.hospital || "Binorix Medical Center", pageWidth / 2, 40, { align: "center" });
+      pdf.text(currentDoctorDetails?.hospital || "Zypher Medical Center", pageWidth / 2, 40, { align: "center" });
       
       pdf.setFontSize(10);
       pdf.setFont("helvetica", "normal");
       pdf.text("123 Healthcare Avenue, Medical District", pageWidth / 2, 48, { align: "center" });
-      pdf.text(`Phone: +91-9876543210 | Email: ${currentDoctorDetails?.email || 'contact@binorix.com'}`, pageWidth / 2, 54, { align: "center" });
+      pdf.text(`Phone: +91-9876543210 | Email: ${currentDoctorDetails?.email || 'contact@Zypher.com'}`, pageWidth / 2, 54, { align: "center" });
       
       pdf.setLineWidth(0.5);
       pdf.line(15, 60, pageWidth - 15, 60);
@@ -459,7 +465,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.text(`${currentDoctorDetails?.name || 'Dr. John Smith'}`, 15, 85);
       pdf.text(`Specialization: ${currentDoctorDetails?.specialization || 'General Medicine'}`, 15, 92);
       pdf.text(`NMR Registration No: ${currentDoctorDetails?.registrationNumber || 'MED12345'}`, 15, 99);
-      pdf.text(`Hospital: ${currentDoctorDetails?.hospital || 'Binorix Medical Center'}`, 15, 106);
+      pdf.text(`Hospital: ${currentDoctorDetails?.hospital || 'Zypher Medical Center'}`, 15, 106);
       
       pdf.setFont("helvetica", "bold");
       pdf.text("Patient Information:", 15, 125);
@@ -586,7 +592,7 @@ export default function PrescriptionTable({ patient, onPrescriptionComplete }: P
       pdf.setFont("helvetica", "italic");
       pdf.setFontSize(8);
       pdf.text("This prescription is digitally signed and verified on blockchain.", 15, signatureY + 42);
-      pdf.text(`Valid only with proper verification through ${currentDoctorDetails?.hospital || 'Binorix Medical Center'}.`, 15, signatureY + 48);
+      pdf.text(`Valid only with proper verification through ${currentDoctorDetails?.hospital || 'Zypher Medical Center'}.`, 15, signatureY + 48);
       
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);

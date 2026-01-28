@@ -102,23 +102,21 @@ export default function Hero() {
             transition={{ duration: 1, ease: "easeOut" }}
           >
             <TypingEffect
-              text="Biinorix"
+              text="Zyypher"
               speed={120}
               className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent drop-shadow-lg"
             />
           </motion.div>
 
-          <motion.div
-            className="mb-4"
+          <motion.h2
+            className="mb-4 text-3xl md:text-4xl font-bold text-gray-800"
             variants={itemVariants}
             initial="hidden"
             animate="visible"
             transition={{ delay: 0.5 }}
           >
-            <h2 className="text-2xl md:text-3xl font-semibold text-blue-600 mb-2">
-              🏥 Digital Healthcare Revolution
-            </h2>
-          </motion.div>
+            🏥 Digital Healthcare Revolution
+          </motion.h2>
 
           <motion.p
             className="mt-6 text-lg text-gray-600 text-center max-w-2xl mx-auto"

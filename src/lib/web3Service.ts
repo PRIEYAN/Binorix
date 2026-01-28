@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { switchToQIEChain, CONTRACT_ADDRESSES } from './qieConfig';
+import { switchToBSCTestnet, CONTRACT_ADDRESSES } from './bscConfig';
 
 // Smart Contract ABI for PrescriptionRecords
 const PRESCRIPTION_CONTRACT_ABI = [
@@ -105,7 +105,7 @@ class Web3Service {
     try {
       // Initialize with environment variables
       const contractAddress = CONTRACT_ADDRESSES.PRESCRIPTION_RECORDS;
-      const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.qiechain.com';
+      const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://bsc-testnet.publicnode.com';
       
       console.log('🔍 Environment Variables Check:');
       console.log('CONTRACT_ADDRESS:', contractAddress);
@@ -151,7 +151,7 @@ class Web3Service {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       
       // Check and switch to BSC Testnet if needed
-      await switchToQIEChain();
+      await switchToBSCTestnet();
       
       // Create Web3 provider from MetaMask
       const provider = new ethers.BrowserProvider(window.ethereum);

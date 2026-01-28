@@ -1,10 +1,10 @@
-# **Binorix** - Prescriptions on Blockchain
+# **Zypher** - Prescriptions on Blockchain
 
-<img src="./src/assets/logo.png" alt="binorix-logo" width="600"/>
+<img src="./src/assets/logo.png" alt="Zypher-logo" width="600"/>
 
 ## Secure Digital Prescription System for Hospitals & Pharmacies
 
-binorix aims to revolutionize prescriptions by creating a **secure, paperless prescription system**:
+Zypher aims to revolutionize prescriptions by creating a **secure, paperless prescription system**:
 
 - Doctors generate prescriptions using their **digital signature** by their wallet, preventing forgery and ensuring authenticity.  
 - Each prescription is stored on a **IPFS Storage** which create a unique **CID** and it will based to Smart Contracts on Avalanche C-Chain.
@@ -75,7 +75,7 @@ Our vision is to create a secure, transparent, and decentralized prescription ma
 1. **Clone the Repository**
     ```bash
     git clone https://github.com/Madan94/zypher.git
-    cd binorix
+    cd Zypher
     ```
 
 2. **Dowload all the Project Dependencies**
@@ -88,28 +88,28 @@ Our vision is to create a secure, transparent, and decentralized prescription ma
     npm run dev
     ```
 4. **Backend Repo Link**
-    Repo link - [https://github.com/PRIEYAN/binorix-backend](https://github.com/PRIEYAN/Binorix-backend)
+    Repo link - [https://github.com/PRIEYAN/Zypher-backend](https://github.com/PRIEYAN/Zypher-backend)
     ```bash
     npm install
     node server.js
     ```
 5. **Android App Repo Link**
-    Repo link [https://github.com/Madan94/binorix_patient](https://github.com/Madan94/binorix_patient)
+    Repo link [https://github.com/Madan94/Zypher_patient](https://github.com/Madan94/Zypher_patient)
    ```bash
    npm install
    npx react-native start
    npx react-native run-android
    ```
 
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
+[⬆️ Back to Top](#Zypher---Prescriptions-on-Blockchain)
 
 ---
 
 ## Project Overview <a name="project-overview"></a>
 
-Binorix leverages blockchain technology to ensure the security and integrity of medical prescriptions. It provides a decentralized platform where doctors can generate, sign, and manage prescriptions while patients can securely access their medical records.
+Zypher leverages blockchain technology to ensure the security and integrity of medical prescriptions. It provides a decentralized platform where doctors can generate, sign, and manage prescriptions while patients can securely access their medical records.
 
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
+[⬆️ Back to Top](#Zypher---Prescriptions-on-Blockchain)
 
 ---
 
@@ -127,7 +127,7 @@ Binorix leverages blockchain technology to ensure the security and integrity of 
 - **Patient Records:**  
   Enables patients to access their prescription history securely.
 
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
+[⬆️ Back to Top](#Zypher---Prescriptions-on-Blockchain)
 
 ## Screenshots <a name="screenshots"></a>
 
@@ -149,7 +149,7 @@ Binorix leverages blockchain technology to ensure the security and integrity of 
   
   <thead>
     <tr>
-      <th>About Binorix</th>
+      <th>About Zypher</th>
       <th>Pharmacy Core</th>
     </tr>
   </thead>
@@ -176,34 +176,15 @@ Binorix leverages blockchain technology to ensure the security and integrity of 
 
 
 
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
+[⬆️ Back to Top](#Zypher---Prescriptions-on-Blockchain)
 
----
 
-## Team Fsociety <a name="team-binorix"></a>
-
-- **Madhanraj M** – Team Lead, Full Stack & Web3 Developer  
-- **Prieyan MN** – Backend Developer  
-- **M Shyam Sundar** – Frontend & App Developer  
-- **CR Raakesh** – Backend Developer 
-
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
-
----
-
-## Hackathons and Events <a name="hackathons-and-events"></a>
-
-- Participated in **BNB Chine Web3 Hackathon** at thane Mumbai
-
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
-
----
 
 ## License <a name="license"></a>
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/Madan94/binorix/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/Madan94/Zypher/blob/main/LICENSE) file for details.
 
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
+[⬆️ Back to Top](#Zypher---Prescriptions-on-Blockchain)
 
 ---
 
@@ -211,10 +192,8 @@ This project is licensed under the MIT License. See the [LICENSE](https://github
 
 For any inquiries or support, feel free to reach out:
 
-- **Email:** [![Email](https://img.shields.io/badge/Connect-email?logo=mail)](mailto:madhanwebdev94@gmail.com)  
-- **LinkedIn:**  
-**Madhanraj M** - [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/madhan-fullstack-developer/)  
 **Prieyan M N** - [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/prieyanmn2007/)
+**Vishvak R** - [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/prieyanmn2007/)
   <br/>
 
 ---
@@ -223,8 +202,8 @@ For any inquiries or support, feel free to reach out:
 
 ---
 
-[⬆️ Back to Top](#binorix---Prescriptions-on-Blockchain)
+[⬆️ Back to Top](#Zypher---Prescriptions-on-Blockchain)
 
 ---
 
-*Made with ❤️ by Team FSociety🔥.*
+*Made with ❤️ by Team Zypher.*

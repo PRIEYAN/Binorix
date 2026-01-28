@@ -38,7 +38,7 @@ export default function Header() {
           </motion.div>
           <div className="flex flex-col">
             <span className="font-extrabold text-2xl md:text-3xl font-headline bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              Binorix
+              Zypher
             </span>
             <span className="text-xs text-blue-500 font-medium -mt-1">Healthcare Platform</span>
           </div>
@@ -107,7 +107,7 @@ export default function Header() {
                     <Stethoscope className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-xl text-blue-700">Binorix</span>
+                    <span className="font-bold text-xl text-blue-700">Zypher</span>
                     <span className="text-xs text-blue-500">Healthcare Platform</span>
                   </div>
                 </Link>

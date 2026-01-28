@@ -1,3 +1,7 @@
+// CRITICAL: Import this FIRST to block localStorage on server before any dependencies load
+// This MUST run before Next.js or any dependencies are loaded
+require("./src/server/noLocalStorage.js");
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {

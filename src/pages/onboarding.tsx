@@ -138,7 +138,7 @@ export default function Onboarding() {
           <h1 className="text-4xl md:text-5xl font-extrabold font-headline mb-4">
             Join{" "}
             <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              Binorix
+              Zypher
             </span>{" "}
             now!
           </h1>

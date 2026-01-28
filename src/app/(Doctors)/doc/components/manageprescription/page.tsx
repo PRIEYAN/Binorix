@@ -56,6 +56,9 @@ export default function PastPrescriptions() {
   const fetchCompletedPrescriptions = async () => {
     try {
       setLoading(true);
+      if (typeof window === 'undefined') {
+        throw new Error('Window is not available');
+      }
       const token = localStorage.getItem('token');
       
       if (!token) {

@@ -1,4 +1,4 @@
-// QIE Chain Mainnet Configuration for Binorix Medical DApp
+// QIE Chain Mainnet Configuration for Zypher Medical DApp
 
 export const QIE_MAINNET_CONFIG = {
   chainId: 8888,

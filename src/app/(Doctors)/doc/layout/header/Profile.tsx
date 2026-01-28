@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +21,7 @@ const Profile = () => {
   const router = useRouter();
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const token = localStorage.getItem('token') || localStorage.getItem('pharmacyToken') || localStorage.getItem('hospitalToken');
     if (!token) {
       router.push('/');
@@ -84,9 +87,11 @@ const Profile = () => {
             component={Link}
             fullWidth
             onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('pharmacyToken');
-              localStorage.removeItem('hospitalToken');
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('token');
+                localStorage.removeItem('pharmacyToken');
+                localStorage.removeItem('hospitalToken');
+              }
               router.push('/');
             }}
           >

@@ -3,13 +3,10 @@
 import './globals.css';
 import '../styles/animations.css';
 import { Poppins } from 'next/font/google';
-import { WagmiProvider } from 'wagmi';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { baselightTheme } from "@/utils/theme/DefaultColors";
-import { config } from "@/lib/wagmiConfig";
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -18,18 +15,12 @@ const poppins = Poppins({
   display: 'swap',
 });
 
-import {
-  avalanche,
-  mainnet,
-  polygon,
-  optimism,
-  arbitrum,
-  base,
-} from 'wagmi/chains';
-
-
-// Create a single QueryClient instance
-const queryClient = new QueryClient();
+// Dynamically import Wagmi/RainbowKit providers to avoid SSR issues
+// Note: WagmiProvider (via getDefaultConfig) already includes QueryClientProvider internally
+const WagmiProviders = dynamic(
+  () => import('./WagmiProviders').then((mod) => mod.default),
+  { ssr: false }
+);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -37,13 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider theme={baselightTheme}>
           <CssBaseline />
-          <QueryClientProvider client={queryClient}>
-            <WagmiProvider config={config}>
-              <RainbowKitProvider>
-                {children}
-              </RainbowKitProvider>
-            </WagmiProvider>
-          </QueryClientProvider>
+          <WagmiProviders>
+            {children}
+          </WagmiProviders>
         </ThemeProvider>
       </body>
     </html>

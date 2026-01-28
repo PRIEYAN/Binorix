@@ -89,7 +89,7 @@ export default function Features() {
           <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">
             Why Choose{" "}
             <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              Binorix?
+              Zypher?
             </span>
           </h2>
           

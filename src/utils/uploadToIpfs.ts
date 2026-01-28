@@ -1,8 +1,18 @@
 import lighthouse from "@lighthouse-web3/sdk";
-import { getAccount, getWalletClient } from "@wagmi/core";
-import { config } from "@/lib/wagmiConfig";
 
 export async function uploadPDFWithWallet(pdfBlob: Blob) {
+  // Lazy import wagmi modules - only on client side
+  if (typeof window === 'undefined') {
+    throw new Error('uploadPDFWithWallet can only be called on the client side');
+  }
+
+  // Dynamically import wagmi modules to avoid SSR issues
+  const [{ getAccount, getWalletClient }, { initConfig }] = await Promise.all([
+    import("@wagmi/core"),
+    import("@/lib/wagmiConfig")
+  ]);
+
+  const config = await initConfig();
   const account = getAccount(config);
   if (!account.address) throw new Error("Wallet not connected");
 

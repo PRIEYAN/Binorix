@@ -13,6 +13,7 @@
     "@web3modal/ethereum": "^2.7.1",
     "@web3modal/react": "^2.7.1",
     "connectkit": "^1.9.1",
+    "nvm": "^0.0.4",
     "use-debounce": "^10.0.5",
     "viem": "^2.33.3",
     "wagmi": "^2.16.1"

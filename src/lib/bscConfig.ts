@@ -1,4 +1,4 @@
-// BSC Testnet Configuration for Binorix Medical DApp
+// BSC Testnet Configuration for Zypher Medical DApp
 
 export const BSC_TESTNET_CONFIG = {
   chainId: 97,

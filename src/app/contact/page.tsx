@@ -34,7 +34,7 @@ export default function ContactPage() {
       {/* Left Section */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center ml-10">
         {/* Header */}
-        <h1 className="text-5xl font-extrabold mb-10 ml-10 text-purple-600">Zypher</h1>
+        <h1 className="text-5xl font-extrabold mb-10 ml-10 text-purple-600">w</h1>
 
         {/* Contact Card */}
         <div className="bg-white rounded-lg shadow p-8 max-w-md">

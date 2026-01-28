@@ -1,20 +1,26 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import WalletConnect from "@/app/providers";
 import { IconAddressBook, IconNetwork, IconCurrencyEthereum, IconWallet } from "@tabler/icons-react";
-import { avalanche, mainnet, polygon, optimism, arbitrum, base,bsc } from 'wagmi/chains';
-import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-const config = getDefaultConfig({
-  appName: 'My RainbowKit App',
-  projectId: '322a547413a527fe6601236be62479a4',
-  chains: [avalanche, mainnet, polygon, optimism, arbitrum, base, bsc],
-  ssr: true, 
-});
-
-import { useAccount, useBalance, WagmiProvider, useChainId } from 'wagmi';
 
 function WalletInfo() {
+  const [wagmiHooks, setWagmiHooks] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setMounted(true);
+    import('wagmi').then((wagmiModule) => {
+      setWagmiHooks(wagmiModule);
+    });
+  }, []);
+
+  if (!mounted || !wagmiHooks) {
+    return <div>Loading wallet...</div>;
+  }
+
+  const { useAccount, useBalance, useChainId } = wagmiHooks;
   const { address, isConnected, connector } = useAccount();
   const { data: balance, isError, isLoading } = useBalance({
     address: address,
@@ -104,14 +110,50 @@ function WalletInfo() {
 }
 
 export default function CryptoWallet() {
-  const queryClient = new QueryClient();
-  return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider coolMode>
-          <WalletInfo/>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
-  );
+  const [providers, setProviders] = useState<React.ReactNode>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setMounted(true);
+
+    Promise.all([
+      import('wagmi'),
+      import('@rainbow-me/rainbowkit'),
+      import('wagmi/chains'),
+      import('@tanstack/react-query')
+    ]).then(([wagmiModule, rainbowKitModule, chainsModule, queryModule]) => {
+      const { WagmiProvider } = wagmiModule;
+      const { getDefaultConfig, RainbowKitProvider } = rainbowKitModule;
+      const { avalanche, mainnet, polygon, optimism, arbitrum, base, bsc } = chainsModule;
+      const { QueryClient, QueryClientProvider } = queryModule;
+
+      const config = getDefaultConfig({
+        appName: 'My RainbowKit App',
+        projectId: '322a547413a527fe6601236be62479a4',
+        chains: [avalanche, mainnet, polygon, optimism, arbitrum, base, bsc],
+        ssr: true, 
+      });
+
+      const queryClient = new QueryClient();
+      
+      setProviders(
+        <WagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            <RainbowKitProvider coolMode>
+              <WalletInfo/>
+            </RainbowKitProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+      );
+    }).catch((error) => {
+      console.error('Failed to load wallet providers:', error);
+    });
+  }, []);
+
+  if (!mounted || !providers) {
+    return <div>Loading...</div>;
+  }
+
+  return <>{providers}</>;
 }

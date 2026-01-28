@@ -49,7 +49,7 @@ export default function Footer() {
   ];
 
   const contactInfo = [
-    { icon: <Mail className="w-4 h-4" />, text: "support@binorix.com" },
+    { icon: <Mail className="w-4 h-4" />, text: "support@Zypher.com" },
     { icon: <Phone className="w-4 h-4" />, text: "+1 (555) 123-4567" },
     { icon: <MapPin className="w-4 h-4" />, text: "San Francisco, CA" },
   ];
@@ -85,7 +85,7 @@ export default function Footer() {
                   <Stethoscope className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-extrabold text-2xl font-headline">Binorix</span>
+                  <span className="font-extrabold text-2xl font-headline">Zypher</span>
                   <span className="text-blue-200 text-sm">Healthcare Platform</span>
                 </div>
               </div>
@@ -157,7 +157,7 @@ export default function Footer() {
               className="text-center md:text-left"
             >
               <p className="text-blue-200 text-sm">
-                &copy; {new Date().getFullYear()} Binorix Healthcare Platform. All rights reserved.
+                &copy; {new Date().getFullYear()} Zypher Healthcare Platform. All rights reserved.
               </p>
               <p className="text-blue-300 text-xs mt-1">
                 Empowering healthcare professionals worldwide with secure digital prescriptions.

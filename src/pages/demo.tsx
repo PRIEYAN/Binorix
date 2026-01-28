@@ -32,7 +32,7 @@ export default function Demo() {
           <h2 className="text-4xl md:text-5xl font-bold font-headline mb-4">
             See{" "}
             <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              Binorix
+              Zypher
             </span>{" "}
             in Action
           </h2>

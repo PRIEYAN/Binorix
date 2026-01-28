@@ -115,7 +115,7 @@ class QRCodeService {
 
       // Create detailed QR code data structure
       const qrData = {
-        type: 'BINORIX_PRESCRIPTION',
+        type: 'Zypher_PRESCRIPTION',
         version: '1.0',
         prescriptionId: prescriptionDetails.blockchainData.prescriptionId,
         doctorWallet: prescriptionDetails.blockchainData.doctorWallet,

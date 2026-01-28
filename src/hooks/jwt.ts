@@ -21,6 +21,11 @@ export function useJwt(role: string) {
   useEffect(() => {
     const fetchJwt = async () => {
       try {
+        if (typeof window === 'undefined') {
+          setError("No token found");
+          setLoading(false);
+          return;
+        }
         const token = localStorage.getItem("token");
         if (!token) {
           setError("No token found");
